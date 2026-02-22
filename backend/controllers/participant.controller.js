@@ -1,0 +1,450 @@
+import UserModel from '../models/user.model.js'
+import ParticipantModel from '../models/participant.model.js';
+import OrganizerModel from '../models/organizer.model.js';
+import { TagsModel, registrationsModel, EventsModel, teamsModel } from '../models/events.model.js';
+
+export const fetchMe = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const participant = await ParticipantModel.findOne({ user: userId });
+
+        if (!participant) {
+            return res.status(401).json({ error: "Participant profile not found" });
+        }
+        const all_tags = await TagsModel.find().lean(); //lil bit of optimization  
+        //   participant.all_tags = all_tags; // list. of all tags so that user can also select ones not selected
+        res.status(200).json({ participant, all_tags });
+    } catch (error) {
+        console.log("twas an Error in fetchMe controller", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+// separate enpoint for interests followings and for participant details
+
+
+export const putMe = async (req, res) => { // we will always get the full list of participant details
+    try {
+        const userId = req.user._id;
+        const { firstName, lastName, orgName, contactNumber } = req.body;
+        if (!(firstName && lastName && orgName && contactNumber)) {
+            return res.status(400).json({ error: "Missing some of the required fields" });
+        }
+
+        const participant = await ParticipantModel.findOne({ user: userId });
+        if (!participant) {
+            return res.status(404).json({ error: "Participant was not found" });
+        }
+        participant.firstName = firstName;
+        participant.lastName = lastName;
+        participant.orgName = orgName;
+        participant.contactNumber = contactNumber;
+
+        await participant.save();
+
+        res.status(200).json(participant);
+
+    } catch (error) {
+        console.log("twas an Error in putMe controller", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const putMyInterests = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { tags } = req.body;
+
+        if (!tags || !Array.isArray(tags)) {
+            return res.status(400).json({ error: "Interests/Tags must be provided as an array" });
+        }
+
+        const participant = await ParticipantModel.findOne({ user: userId });
+        if (!participant) {
+            return res.status(404).json({ error: "Participant not found" });
+        }
+
+        participant.tags = tags;
+        await participant.save();
+
+        res.status(200).json(participant);
+
+    } catch (error) {
+        console.log("Error in putMyInterests controller", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+
+
+export const putMyOrganizations = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { followingOrganizations } = req.body; // Expecting an array of organization names
+
+        if (!followingOrganizations || !Array.isArray(followingOrganizations)) {
+            return res.status(400).json({ error: "followingOrganizations must be an array of organization names" });
+        }
+
+        // Verify names and get their IDs
+        const validOrganizers = await OrganizerModel.find({ name: { $in: followingOrganizations } });
+        const validOrganizerIds = validOrganizers.map(org => org._id);
+
+        const participant = await ParticipantModel.findOne({ user: userId });
+        if (!participant) {
+            return res.status(404).json({ error: "Participant not found" });
+        }
+
+        participant.followingOrganizations = validOrganizerIds;
+        await participant.save();
+
+        res.status(200).json(participant);
+
+    } catch (error) {
+        console.log("Error in putMyOrganizations controller", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+// Helper: uploads files to GridFS, returns array of { fieldname, id }
+const uploadFilesToGridFS = async (files) => {
+    const { gridfsBucket } = await import('../config/db.js');
+    const { Readable } = await import('stream');
+
+    if (!gridfsBucket) {
+        throw new Error("File upload service unavailable");
+    }
+
+    // Process all file uploads concurrently
+    const uploadPromises = files.map(file => {
+        return new Promise((resolve, reject) => {
+            const filename = `${Date.now()}-${file.originalname}`;
+
+            // Create readable stream from buffer
+            const readableStream = Readable.from(file.buffer);
+
+            // Create upload stream to GridFS
+            const uploadStream = gridfsBucket.openUploadStream(filename, {
+                contentType: file.mimetype
+            });
+
+            // Pipe buffer to GridFS
+            readableStream.pipe(uploadStream)
+                .on('error', (error) => {
+                    console.error("Stream error:", error);
+                    reject(error);
+                })
+                .on('finish', () => {
+                    console.log(`File uploaded: ${filename}, ID: ${uploadStream.id}`);
+                    resolve({ fieldname: file.fieldname, id: uploadStream.id });
+                });
+        });
+    });
+
+    return await Promise.all(uploadPromises);
+};
+
+// Helper: handles team logic for normal events, returns teamId or null
+const handleTeamRegistration = async (req, event) => {
+    const joinTeam = req.body.joinTeam; // contains team code - you want to join
+    let createTeam = req.body.createTeam; // contains team name
+
+    // FormData sends objects as JSON strings, so parse if needed
+    if (typeof createTeam === 'string') {
+        try { createTeam = JSON.parse(createTeam); } catch (e) { createTeam = null; }
+    }
+
+    if (joinTeam && event.TeamEvent) {
+        // if the team capacity is already full - reject
+        const team = await teamsModel.findOne({ teamCode: joinTeam });
+        if (!team) {
+            throw { status: 404, message: "Team not found" };
+        }
+        // search for team with this code - add the member     
+        if (team.currentLength >= team.capacity) {
+            throw { status: 400, message: "Team is full" };
+        }
+        team.currentLength += 1;
+        await team.save();
+        return team._id;
+    }
+    else if (createTeam && event.TeamEvent) {
+        // make a team - add user into team. 
+        const { teamName, capacity } = createTeam;
+        if (!teamName || !capacity) {
+            throw { status: 400, message: "Team name and capacity are required" };
+        }
+        if (capacity < 2 || capacity > 5) {
+            throw { status: 400, message: "Team capacity must be between 2 and 5" };
+        }
+        const team = new teamsModel({
+            teamName,
+            capacity,
+            currentLength: 1,
+            teamLeader: req.user._id
+        });
+        await team.save();
+        return team._id;
+    }
+    else if (event.TeamEvent) {
+        throw { status: 400, message: "Team events require either creating or joining a team" };
+    }
+
+    return null;
+};
+
+// Helper: parses form responses, uploads files, validates required fields
+const handleFormResponse = async (req, event) => {
+    if (!event.registrationForm) return null;
+
+    let responses = {};
+
+    // Parse non-file responses
+    if (req.body.formResponse) {
+        try {
+            responses = JSON.parse(req.body.formResponse);
+        } catch (e) {
+            console.error("Error parsing formResponse:", e);
+            throw { status: 400, message: "Invalid form response format" };
+        }
+    }
+
+    // Handle file uploads explicitly using streams
+    if (req.files && req.files.length > 0) {
+        try {
+            const uploadedFiles = await uploadFilesToGridFS(req.files);
+            uploadedFiles.forEach(f => {
+                responses[f.fieldname] = f.id;
+            });
+        } catch (uploadError) {
+            console.error("Upload failed:", uploadError);
+            throw { status: 500, message: "Failed to upload files" };
+        }
+    }
+
+    // Basic validation: Check if required fields are present
+    for (const field of event.registrationForm) {
+        // Check if required field exists in responses.
+        // Note: 'false' or 0 are valid answers, so check strictly for undefined/null/empty string if text
+        // But for simplicity, simple existence check (truthy or '0'/'false' exception)
+
+        const val = responses[field.label];
+        if (field.required) {
+            if (val === undefined || val === null || val === '') {
+                throw { status: 400, message: `Field '${field.label}' is required` };
+            }
+        }
+    }
+
+    return responses;
+};
+
+// Helper: handles merchandise variant validation and stock decrement
+const handleMerchandiseRegistration = (req, event) => {
+    if (!event.merchandise)
+        throw { status: 400, message: "No merch selection" };
+
+    const requestedVariant = req.body.merchandise.items.variants;
+    const availableVariants = event.merchandise.items.variants;
+
+    const targetVariant = availableVariants.find(v =>
+        v.size === requestedVariant.size && v.color === requestedVariant.color
+    );
+
+    if (!targetVariant) {
+        throw { status: 400, message: "Variant not found" };
+    }
+
+    if (targetVariant.stock <= 0) {
+        throw { status: 400, message: "Out of stock" };
+    }
+
+    // Decrement stock
+    targetVariant.stock -= 1;
+
+    return {
+        items: {
+            name: event.merchandise.items.name,
+            variants: {
+                size: targetVariant.size,
+                color: targetVariant.color,
+                stock: targetVariant.stock
+            }
+        }
+    };
+};
+
+export const registerForEvent = async (req, res) => {
+    try {
+        const eventId = req.params.id;
+        const participant = await ParticipantModel.findOne({ user: req.user._id });
+
+        if (!participant) {
+            return res.status(404).json({ error: "Participant profile not found" });
+        }
+
+        // assuming that backend has sent event specific info in req
+        const event = await EventsModel.findById(eventId);
+
+        if (!event) {
+            return res.status(404).json({ error: "Event not found" });
+        }
+
+        if (event.status !== 'Published' && event.status !== 'Ongoing') {
+            return res.status(400).json({ error: "Event is not open for registration" });
+        }
+
+        if (event.registrationLimit && event.registeredCount >= event.registrationLimit) {
+            return res.status(400).json({ error: "Registration limit reached" });
+        }
+
+        if (event.registrationDeadline && new Date() > event.registrationDeadline) {
+            return res.status(400).json({ error: "Registration deadline has passed" });
+        }
+
+        const registrationData = {
+            participantId: participant._id,
+            EventId: event._id,
+            eventType: event.eventType
+        };
+
+        if (event.eventType === 'normal') {
+
+            const registeredForEvent = await registrationsModel.findOne({ EventId: event._id, participantId: participant._id });
+            if (registeredForEvent) {
+                return res.status(400).json({ error: "Already registered" });
+            }
+
+            // Handle team logic
+            const teamId = await handleTeamRegistration(req, event);
+            if (teamId) registrationData.teamId = teamId;
+
+            // Handle form responses + file uploads
+            const formResponse = await handleFormResponse(req, event);
+            if (formResponse) registrationData.formResponse = formResponse;
+
+        } else if (event.eventType === 'merchandise') {
+
+            const limit = event.merchandise.purchaseLimitPerParticipant;
+            const bought = await registrationsModel.countDocuments({ EventId: eventId, participantId: participant._id });
+
+            if (limit <= bought)
+                return res.status(400).json({ error: "Cannot buy more" });
+
+            registrationData.merchandise = handleMerchandiseRegistration(req, event);
+        }
+
+        event.registeredCount += 1;
+        await event.save();
+
+        const newRegistration = new registrationsModel(registrationData);
+        await newRegistration.save();
+
+        participant.registered.push(newRegistration._id);
+        await participant.save();
+
+        // If a team was created, include the teamCode so leader can share it
+        const responseData = { message: "Registered successfully", registration: newRegistration };
+        if (newRegistration.teamId) {
+            const team = await teamsModel.findById(newRegistration.teamId).select('teamCode teamName');
+            if (team) {
+                responseData.team = { teamCode: team.teamCode, teamName: team.teamName };
+            }
+        }
+
+        res.status(201).json(responseData);
+    }
+    catch (error) {
+        // Handle structured errors thrown by helpers
+        if (error.status) {
+            return res.status(error.status).json({ error: error.message });
+        }
+        console.log("Error in registerForEvent controller", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const getNonDraftEvents = async (req, res) => {
+    try {
+        // Fetch all events where status is NOT 'Draft'
+        const events = await EventsModel.find({ status: { $ne: 'Draft' } })
+            .populate('organizer', 'name email') // Populate organizer details (optional but good for UI)
+            .sort({ createdAt: -1 }); // Sort by newest first
+
+        res.status(200).json(events);
+    } catch (error) {
+        console.log("Error in getNonDraftEvents controller", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const getEventById = async (req, res) => {
+    try {
+        const eventId = req.params.id;
+        const event = await EventsModel.findById(eventId).populate('organizer', 'name email').lean();
+
+        if (!event) {
+            return res.status(404).json({ error: "Event not found" });
+        }
+
+        // Participants should not see Draft events
+        if (event.status === 'Draft') {
+            return res.status(404).json({ error: "Event not found" }); // Mask as 404 for security/UX
+        }
+
+        // If it's a team event and participant is logged in, check for team info
+        if (event.TeamEvent && req.participantId) {
+            const myReg = await registrationsModel.findOne({
+                EventId: eventId,
+                participantId: req.participantId
+            });
+
+            if (myReg?.teamId) {
+                const team = await teamsModel.findById(myReg.teamId);
+
+                // Find all teammates
+                const teamRegs = await registrationsModel.find({ teamId: myReg.teamId })
+                    .populate({
+                        path: 'participantId',
+                        select: 'firstName lastName'
+                    });
+
+                const members = teamRegs
+                    .map(r => `${r.participantId.firstName} ${r.participantId.lastName}`)
+                    .filter(Boolean);
+
+                event.teamInfo = {
+                    teamName: team.teamName,
+                    teamCode: team.teamCode,
+                    members
+                };
+            }
+        }
+
+        res.status(200).json(event);
+    } catch (error) {
+        console.log("Error in getEventById controller", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const getMyRegistrations = async (req, res) => {
+
+    try {
+        const participantId = req.participantId;
+        const registrations = await registrationsModel.find({ participantId: participantId })
+            .populate({
+                path: 'EventId',
+                populate: { path: 'organizer', select: 'name email' }
+            })
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json(registrations);
+
+
+    }
+    catch (error) {
+        console.log("Error in get registrations controller", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+}
