@@ -32,7 +32,8 @@ router.post("/reset", requestPasswordReset);
 router.put("/profile", putOrganizer);
 router.put("/events/:id", updateEvents); // updates an event with edits based on publish or draft    
 
-router.patch("/events/attend/:regId/:action" , manageAttendance);
+router.patch("/events/attend/:regId/:action", manageAttendance);
+router.patch("/events/:eventId/attend-ticket/:ticketId", manageAttendance);
 
 router.patch("/events/:id/status", (req, res) => {
     console.log("doesnt work");

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import axiosInstance from '../../api/axios';
+import Fuse from 'fuse.js';
 import {
     Table,
     TableBody,
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const RegistrationsList = ({ eventId }) => {
@@ -24,21 +26,46 @@ const RegistrationsList = ({ eventId }) => {
     const [selectedRegId, setSelectedRegId] = useState(null);
     const [details, setDetails] = useState(null);
     const [loadingDetails, setLoadingDetails] = useState(false);
+    const [attendanceError, setAttendanceError] = useState('');
+
+    const [searchQuery, setSearchQuery] = useState('');
+    const [attendanceFilter, setAttendanceFilter] = useState('all'); // 'all' | 'attended' | 'not_attended'
+
+    const fetchRegistrations = async () => {
+        try {
+            const res = await axiosInstance.get(`/organizers/events/${eventId}/registrations`);
+            setRegistrations(res.data);
+        } catch (error) {
+            console.error("Failed to fetch registrations", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchRegistrations = async () => {
-            try {
-                const res = await axiosInstance.get(`/organizers/events/${eventId}/registrations`);
-                setRegistrations(res.data);
-            } catch (error) {
-                console.error("Failed to fetch registrations", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         if (eventId) fetchRegistrations();
     }, [eventId]);
+
+    // Fuse.js setup for fuzzy search on participant names
+    const fuse = useMemo(() => new Fuse(registrations, {
+        keys: ['participantId.firstName', 'participantId.lastName'],
+        threshold: 0.4,
+    }), [registrations]);
+
+    // Filter and search
+    const filteredRegistrations = useMemo(() => {
+        let results = searchQuery
+            ? fuse.search(searchQuery).map(r => r.item)
+            : registrations;
+
+        if (attendanceFilter === 'attended') {
+            results = results.filter(r => r.attended);
+        } else if (attendanceFilter === 'not_attended') {
+            results = results.filter(r => !r.attended);
+        }
+
+        return results;
+    }, [searchQuery, attendanceFilter, registrations, fuse]);
 
     const handleRowClick = async (regId) => {
         setSelectedRegId(regId);
@@ -53,26 +80,70 @@ const RegistrationsList = ({ eventId }) => {
         }
     };
 
-    const handleDownload = (fileId) => {
-        // Direct download link
-
-        window.open(`http://localhost:5000/api/organizers/registrations/file/${fileId}`, '_blank');
+    const handleToggleAttendance = async () => {
+        if (!details) return;
+        setAttendanceError('');
+        const newAction = !details.attended;
+        try {
+            await axiosInstance.patch(`/organizers/events/attend/${details._id}/${newAction}`);
+            setDetails({ ...details, attended: newAction });
+            // Update in the list too
+            setRegistrations(prev =>
+                prev.map(r => r._id === details._id ? { ...r, attended: newAction } : r)
+            );
+        } catch (error) {
+            console.error("Failed to update attendance", error);
+            setAttendanceError(error.response?.data?.error || "Failed to update attendance");
+        }
     };
 
-    if (loading) return <div>Loading registrations...</div>;
+    const handleDownload = (fileId) => {
+        window.open(`http://localhost:5000/api/organizers/registrations/file/${fileId}`, '_blank');
+    };
 
     const handleCsvDownload = () => {
         window.open(`http://localhost:5000/api/organizers/events/${eventId}/registrations/csv`, '_blank');
     };
 
+    if (loading) return <div>Loading registrations...</div>;
+
     return (
         <div className="mt-8">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold">Registrations ({registrations.length})</h2>
-                <Button  size="sm" onClick={handleCsvDownload}>
+                <Button size="sm" onClick={handleCsvDownload}>
                     Download CSV
                 </Button>
             </div>
+
+            {/* Search and Filter */}
+            <div className="flex gap-2 mb-4">
+                <Input
+                    placeholder="Search participants..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-xs"
+                />
+                <Button
+                    size="sm"
+                    onClick={() => setAttendanceFilter('all')}
+                >
+                    All
+                </Button>
+                <Button
+                    size="sm"
+                    onClick={() => setAttendanceFilter('attended')}
+                >
+                    Attended
+                </Button>
+                <Button
+                    size="sm"
+                    onClick={() => setAttendanceFilter('not_attended')}
+                >
+                    Not Attended
+                </Button>
+            </div>
+
             <div className="border rounded-md">
                 <Table>
                     <TableHeader>
@@ -80,17 +151,18 @@ const RegistrationsList = ({ eventId }) => {
                             <TableHead>Participant</TableHead>
                             <TableHead>Ticket ID</TableHead>
                             <TableHead>Registered At</TableHead>
+                            <TableHead>Attendance</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {registrations.length === 0 ? (
+                        {filteredRegistrations.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={3} className="text-center h-24 text-muted-foreground">
-                                    No registrations yet.
+                                <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                                    No registrations found.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            registrations.map((reg) => (
+                            filteredRegistrations.map((reg) => (
                                 <TableRow
                                     key={reg._id}
                                     className="cursor-pointer hover:bg-muted/50"
@@ -102,6 +174,11 @@ const RegistrationsList = ({ eventId }) => {
                                     </TableCell>
                                     <TableCell className="font-mono">{reg.ticketId}</TableCell>
                                     <TableCell>{new Date(reg.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={reg.attended ? 'default' : 'secondary'}>
+                                            {reg.attended ? 'Attended' : 'Absent'}
+                                        </Badge>
+                                    </TableCell>
                                 </TableRow>
                             ))
                         )}
@@ -129,6 +206,26 @@ const RegistrationsList = ({ eventId }) => {
                                         <span>{new Date(details.createdAt).toLocaleString()}</span>
                                     </div>
                                 </div>
+
+                                {/* Attendance toggle */}
+                                <div className="flex items-center justify-between border rounded-md p-3">
+                                    <div>
+                                        <span className="font-semibold text-sm">Attendance</span>
+                                        <Badge variant={details.attended ? 'default' : 'secondary'} className="ml-2">
+                                            {details.attended ? 'Attended' : 'Absent'}
+                                        </Badge>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant={details.attended ? 'outline' : 'default'}
+                                        onClick={handleToggleAttendance}
+                                    >
+                                        {details.attended ? 'Mark Unattended' : 'Mark Attended'}
+                                    </Button>
+                                </div>
+                                {attendanceError && (
+                                    <p className="text-sm text-red-500">{attendanceError}</p>
+                                )}
 
                                 {details.eventType === 'merchandise' && details.merchandise?.items && (
                                     <div className="border p-4 rounded-md bg-muted/20">

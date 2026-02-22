@@ -43,7 +43,7 @@ export const updateEvents = async (req, res) => { // this does not allow changin
         const allFields = [
             'name', 'description', 'eventType', 'eligibility', 'tags',
             'registrationFee', 'registrationLimit', 'registrationDeadline',
-            'startDate', 'endDate', 'registrationForm', 'merchandise','TeamEvents'
+            'startDate', 'endDate', 'registrationForm', 'merchandise', 'TeamEvents'
         ];
         const publishFields = ['description', 'registrationDeadline',
             'registrationLimit',] // closing registration is same as preponing deadline
@@ -120,9 +120,8 @@ export const publishEvent = async (req, res) => {
             // check the validity of registration form
             if (!event.registrationForm)
                 missing.push("registration Form");
-        } 
-        else if(event.TeamEvent == true)
-        {   
+        }
+        else if (event.TeamEvent == true) {
             console.log("Merch event no team");
             return res.status(401).json({ error: "merch events cant be team based" });
         }
@@ -306,7 +305,7 @@ export const getEventRegistrations = async (req, res) => {
         // Fetch basic details: ID, Participant Name, Ticket ID
         const registrations = await registrationsModel.find({ EventId: eventId })
             .populate('participantId', 'firstName lastName email')
-            .select('_id participantId ticketId createdAt')
+            .select('_id participantId ticketId createdAt attended')
             .sort({ createdAt: -1 });
 
         res.status(200).json(registrations);
@@ -382,18 +381,19 @@ export const exportRegistrationsCsv = async (req, res) => {
                 select: 'firstName lastName user',
                 populate: { path: 'user', select: 'username' }
             })
-            .select('_id participantId ticketId createdAt')
+            .select('_id participantId ticketId createdAt attended')
             .sort({ createdAt: -1 });
 
         // Build CSV
-        const header = 'Registration ID,First Name,Last Name,Username,Ticket ID,Registration Date\n';
+        const header = 'Registration ID,First Name,Last Name,Username,Ticket ID,Registration Date,Attended\n';
         const rows = registrations.map(reg => {
             const firstName = reg.participantId?.firstName || '';
             const lastName = reg.participantId?.lastName || '';
             const username = reg.participantId?.user?.username || '';
             const ticketId = reg.ticketId || '';
             const date = reg.createdAt ? new Date(reg.createdAt).toISOString() : '';
-            return `${reg._id},${firstName},${lastName},${username},${ticketId},${date}`;
+            const attended = reg.attended ? 'Yes' : 'No';
+            return `${reg._id},${firstName},${lastName},${username},${ticketId},${date},${attended}`;
         }).join('\n');
 
         const csv = header + rows;
@@ -412,27 +412,55 @@ export const exportRegistrationsCsv = async (req, res) => {
 // marking attendance- 
 // marking attendance via Qr or ticket id , marking attendance manually
 // override - unmarking attendance for an event by the organizer. 
-export const manageAttendance = async (req , res) => {
-// mark a registration as attended
+export const manageAttendance = async (req, res) => {
+    // mark a registration as attended
     try {
-        const regId = req.params.regId; 
-        const action= req.params.action; // boolean value - mark or unmark attendance
-        const registration = await (registrationsModel.findById(regId))?.populate("EventId");
+        let registration;
 
-        if(!registration || registration.EventId._id != req.orgId)
-        {
-            return res.status(401).json({error:"Registration Not found"});
-        } 
+        if (req.params.regId) {
+            // Lookup by registration ID (manual toggle from registrations list)
+            registration = await registrationsModel.findById(req.params.regId).populate("EventId");
+        } else if (req.params.ticketId && req.params.eventId) {
+            // Lookup by ticketId + eventId (QR scan)
+            registration = await registrationsModel.findOne({
+                ticketId: req.params.ticketId,
+                EventId: req.params.eventId
+            }).populate("EventId");
+        }
 
-        registration.attended = action; 
-        
+        if (!registration || registration.EventId.organizer.toString() !== req.orgId.toString()) {
+            return res.status(401).json({ error: "Registration Not found" });
+        }
+
+        // Check if current date is within event start and end dates
+        const now = new Date();
+        const start = registration.EventId.startDate;
+        const end = registration.EventId.endDate;
+
+        if (start && now < start) {
+            return res.status(400).json({ error: "Event has not started yet" });
+        }
+        if (end && now > end) {
+            return res.status(400).json({ error: "Event has already ended" });
+        }
+
+        // action is a boolean: from URL param (regId route) or request body (ticketId route)
+        const action = req.params.action !== undefined ? req.params.action === 'true' : req.body.action;
+
+        if (action && registration.attended) {
+            return res.status(400).json({ error: "Already attended" });
+        }
+
+        registration.attended = action;
         await registration.save();
-        
+
+        // Populate participant name for QR response
+        await registration.populate('participantId', 'firstName lastName');
+
         return res.status(201).json(registration);
     }
-     catch(error)
-     {
+    catch (error) {
         console.log("something is wrong with attendance controller", error);
-        return res.status(500).json({error:"Internal Server Error"});
-     }
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
 }

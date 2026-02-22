@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 
 import RegistrationsList from './registrations';
+import QrAttendance from './scanQr';
 
 const MerchandiseSection = ({ control, register, isDraft }) => {
     const { fields: variantFields, append: appendVariant, remove: removeVariant } = useFieldArray({
@@ -522,6 +523,7 @@ const EventCard = () => {
             </Card >
             {!isCreateMode && (
                 <div>
+                    <QrAttendance eventId={id} />
                     <RegistrationsList eventId={id} />
                 </div>
             )}
