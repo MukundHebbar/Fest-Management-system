@@ -317,7 +317,11 @@ export const registerForEvent = async (req, res) => {
 
             // Handle team logic
             const teamId = await handleTeamRegistration(req, event);
-            if (teamId) registrationData.teamId = teamId;
+            if (teamId) {
+                registrationData.teamId = teamId;
+                // Team registration is incomplete until all members join
+                registrationData.status = false;
+            }
 
             // Handle form responses + file uploads
             const formResponse = await handleFormResponse(req, event);
@@ -346,9 +350,17 @@ export const registerForEvent = async (req, res) => {
         // If a team was created, include the teamCode so leader can share it
         const responseData = { message: "Registered successfully", registration: newRegistration };
         if (newRegistration.teamId) {
-            const team = await teamsModel.findById(newRegistration.teamId).select('teamCode teamName');
+            const team = await teamsModel.findById(newRegistration.teamId).select('teamCode teamName capacity currentLength');
             if (team) {
                 responseData.team = { teamCode: team.teamCode, teamName: team.teamName };
+
+                // If team is now full, mark all team registrations (including this one) as complete
+                if (team.currentLength >= team.capacity) {
+                    await registrationsModel.updateMany(
+                        { teamId: team._id },
+                        { $set: { status: true } }
+                    );
+                }
             }
         }
 

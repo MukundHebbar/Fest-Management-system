@@ -58,7 +58,7 @@ const ParticipantDashboard = () => {
         return (
             <Dialog>
                 <DialogTrigger asChild>
-                    <Button  size="sm" className="w-full">
+                    <Button size="sm" className="w-full">
                         View Ticket
                     </Button>
                 </DialogTrigger>
@@ -132,7 +132,11 @@ const ParticipantDashboard = () => {
                     </div>
                 </CardContent>
                 <CardFooter className="pt-2">
-                    <TicketDialog registration={registration} />
+                    {registration.status === false ? (
+                        <Badge variant="secondary" className="w-full justify-center py-1">Team Incomplete</Badge>
+                    ) : (
+                        <TicketDialog registration={registration} />
+                    )}
                 </CardFooter>
             </Card>
         );

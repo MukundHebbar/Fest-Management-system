@@ -16,8 +16,8 @@ const ProtectedRoute = ({ allowedRoles }) => {
             return <Navigate to="/dashboard" replace />
         else if (user.role == 'organizer')
             return <Navigate to="/organizer/dashboard" replace />
-        // lets handle admin case tomorrow
-
+        else if (user.role == 'admin')
+            return <Navigate to="/admin/dashboard" replace />
     }
 
     return <Outlet />

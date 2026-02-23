@@ -15,6 +15,11 @@ import OrganizerProfile from './pages/organizers/profile';
 import ParticipantEvents from './pages/participant/events';
 import EventDetail from './pages/participant/eventDetail';
 import ParticipantDashboard from './pages/participant/ParticipantDashboard';
+import AdminLayout from './layouts/Admin';
+import AdminDashboard from './pages/admin/dashboard';
+import AdminEventDetail from './pages/admin/eventDetail';
+import ManageClubs from './pages/admin/manageClubs';
+import PasswordReset from './pages/admin/passwordReset';
 
 
 function App() {
@@ -47,6 +52,16 @@ function App() {
                   <Route path="/organizer/create" element={<EventCard />} />
                   <Route path="/organizer/event/:id" element={<EventCard />} />
                   <Route path="/organizer/profile" element={<OrganizerProfile />} />
+                </Route>
+              </Route>
+
+              {/** These are our admin routes */}
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route element={<AdminLayout />}>
+                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                  <Route path="/admin/events/:id" element={<AdminEventDetail />} />
+                  <Route path="/admin/clubs" element={<ManageClubs />} />
+                  <Route path="/admin/reset" element={<PasswordReset />} />
                 </Route>
               </Route>
             </Routes>

@@ -145,7 +145,11 @@ export const registrations_schema = new mongoose.Schema({
   teamId:{
     type: mongoose.Schema.Types.ObjectId,
     ref:"Team"
-  }
+  } ,
+  status:{
+    type:Boolean,
+    default:true
+  } //this is used only for team based events. 
   ,
   eventType:{
     type:String,

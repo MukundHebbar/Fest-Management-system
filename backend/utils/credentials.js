@@ -12,7 +12,7 @@ export const autoGenerateCredentials = async (org_num) => {
 }
 
 export const autoGenPassword = async () => {
-    const password = crypto.randomBytes(8).toString('hex'); // 16 characters
+    const password = crypto.randomBytes(4).toString('hex'); // 16 characters
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 

@@ -1,10 +1,21 @@
 # To do List for DASS Assignment tasks
 
+## overall
+
+## emails for registrations
+
+## admin features - password resets, add and remove organizers. 
+
+## bot protection using captcha
+
+## handle team registrations properly
+## handle eligibility properly
+
+
 ## Frontend
 
 ### All UI features using tailwind and shadcn etc
 
-### Implement Qr code scanner and attendance display and marking interface
 
 ### refine some stuff - some things dont look good, others are complex
 
@@ -23,7 +34,6 @@
 
 ### implement organizer password reset requests(confirmation handled at frontend)
 
-### endpoint to fetch attendance for an event
 
 ### endpoint to mark / unmark attendance based on ticket id
 
