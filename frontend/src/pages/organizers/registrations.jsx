@@ -31,6 +31,10 @@ const RegistrationsList = ({ eventId }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [attendanceFilter, setAttendanceFilter] = useState('all'); // 'all' | 'attended' | 'not_attended'
 
+    // Teams state
+    const [teams, setTeams] = useState([]);
+    const [selectedTeam, setSelectedTeam] = useState(null);
+
     const fetchRegistrations = async () => {
         try {
             const res = await axiosInstance.get(`/organizers/events/${eventId}/registrations`);
@@ -43,7 +47,12 @@ const RegistrationsList = ({ eventId }) => {
     };
 
     useEffect(() => {
-        if (eventId) fetchRegistrations();
+        if (eventId) {
+            fetchRegistrations();
+            axiosInstance.get(`/organizers/events/${eventId}/teams`)
+                .then(res => setTeams(res.data))
+                .catch(() => { }); // silently ignore if not a team event
+        }
     }, [eventId]);
 
     // Fuse.js setup for fuzzy search on participant names
@@ -109,6 +118,76 @@ const RegistrationsList = ({ eventId }) => {
 
     return (
         <div className="mt-8">
+            {/* Teams Section */}
+            {teams.length > 0 && (
+                <div className="mb-8">
+                    <h2 className="text-2xl font-bold mb-4">Teams ({teams.length})</h2>
+                    <div className="border rounded-md">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Team Name</TableHead>
+                                    <TableHead>Members</TableHead>
+                                    <TableHead>Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {teams.map(team => (
+                                    <TableRow
+                                        key={team._id}
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => setSelectedTeam(team)}
+                                    >
+                                        <TableCell className="font-medium">{team.teamName}</TableCell>
+                                        <TableCell>{team.currentLength} / {team.capacity}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={team.complete ? 'default' : 'secondary'}>
+                                                {team.complete ? 'Complete' : 'Incomplete'}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Team Detail Dialog */}
+                    <Dialog open={!!selectedTeam} onOpenChange={(open) => !open && setSelectedTeam(null)}>
+                        <DialogContent className="sm:max-w-[400px]">
+                            <DialogHeader>
+                                <DialogTitle>{selectedTeam?.teamName}</DialogTitle>
+                            </DialogHeader>
+                            {selectedTeam && (
+                                <div className="space-y-3 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Team Code</span>
+                                        <span className="font-mono">{selectedTeam.teamCode}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Capacity</span>
+                                        <span>{selectedTeam.currentLength} / {selectedTeam.capacity}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Status</span>
+                                        <Badge variant={selectedTeam.complete ? 'default' : 'secondary'}>
+                                            {selectedTeam.complete ? 'Complete' : 'Incomplete'}
+                                        </Badge>
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold block mb-2">Members</span>
+                                        <ul className="space-y-1">
+                                            {selectedTeam.members.map((m, i) => (
+                                                <li key={i} className="p-2 bg-muted/30 rounded">{m.name}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </DialogContent>
+                    </Dialog>
+                </div>
+            )}
+
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold">Registrations ({registrations.length})</h2>
                 <Button size="sm" onClick={handleCsvDownload}>

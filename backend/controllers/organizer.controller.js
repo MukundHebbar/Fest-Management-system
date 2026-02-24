@@ -1,4 +1,4 @@
-import { EventsModel, registrationsModel } from '../models/events.model.js';
+import { EventsModel, registrationsModel, teamsModel } from '../models/events.model.js';
 import organizerModel from '../models/organizer.model.js';
 import OrganizerModel from '../models/organizer.model.js'
 import UserModel from '../models/user.model.js';
@@ -225,18 +225,39 @@ export const fetchEventAnalysis = async (req, res) => {
 export const requestPasswordReset = async (req, res) => {
     try {
         const { reason } = req.body;
-        if (!reason) {
+        if (!reason || !reason.trim()) {
             return res.status(400).json({ error: "Reason is required" });
         }
         const organizer = await organizerModel.findById(req.orgId);
-        organizer.requestPasswordReset.reason = reason;
+
+        // Check if there's already a pending request
+        const hasPending = organizer.resetHistory.some(r => r.status === 'Pending');
+        if (hasPending) {
+            return res.status(400).json({ error: "You already have a pending request" });
+        }
+
+        organizer.resetRequest.reason = reason.trim();
+        organizer.resetHistory.push({ reason: reason.trim(), status: 'Pending' });
         await organizer.save();
 
         return res.status(201).json({ message: "Password reset request submitted successfully" });
 
     } catch (error) {
-
         console.log("Error in requestPasswordReset controller", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+}
+
+export const getResetHistory = async (req, res) => {
+    try {
+        const organizer = await organizerModel.findById(req.orgId).select('resetHistory');
+        if (!organizer) return res.status(404).json({ error: "Organizer not found" });
+
+        // Return sorted newest first
+        const history = [...organizer.resetHistory].sort((a, b) => b.requestedAt - a.requestedAt);
+        return res.status(200).json(history);
+    } catch (error) {
+        console.log("Error in getResetHistory controller", error);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 }
@@ -409,9 +430,7 @@ export const exportRegistrationsCsv = async (req, res) => {
 };
 
 
-// marking attendance- 
-// marking attendance via Qr or ticket id , marking attendance manually
-// override - unmarking attendance for an event by the organizer. 
+
 export const manageAttendance = async (req, res) => {
     // mark a registration as attended
     try {
@@ -464,3 +483,44 @@ export const manageAttendance = async (req, res) => {
         return res.status(500).json({ error: "Internal Server Error" });
     }
 }
+
+export const getEventTeams = async (req, res) => {
+    try {
+        const eventId = req.params.id;
+        if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
+
+        const event = await EventsModel.findById(eventId);
+        if (!event || event.organizer.toString() !== req.orgId.toString()) {
+            return res.status(403).json({ error: "Unauthorized access to event" });
+        }
+
+        // Find distinct teamIds from registrations for this event
+        const teamIds = await registrationsModel.distinct('teamId', { EventId: eventId, teamId: { $ne: null } });
+
+        const teams = await Promise.all(teamIds.map(async (teamId) => {
+            const team = await teamsModel.findById(teamId).lean();
+            if (!team) return null;
+
+            const members = await registrationsModel.find({ teamId })
+                .populate('participantId', 'firstName lastName')
+                .select('participantId');
+
+            return {
+                _id: team._id,
+                teamName: team.teamName,
+                teamCode: team.teamCode,
+                capacity: team.capacity,
+                currentLength: team.currentLength,
+                complete: team.currentLength >= team.capacity,
+                members: members.map(m => ({
+                    name: m.participantId ? `${m.participantId.firstName} ${m.participantId.lastName}` : 'Unknown',
+                }))
+            };
+        }));
+
+        res.status(200).json(teams.filter(Boolean));
+    } catch (error) {
+        console.error("Error fetching teams:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};

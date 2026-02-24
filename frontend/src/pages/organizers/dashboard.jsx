@@ -56,11 +56,7 @@ const OrganizerDashboard = () => {
                 </Button>
             </div>
 
-            {events.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                    <p>No events found. Start by creating a draft!</p>
-                </div>
-            ) : (
+            {events.length === 0 ? null : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {events.map(event => (
                         <Card
@@ -82,7 +78,7 @@ const OrganizerDashboard = () => {
                                     {event.eventType}
                                 </div>
                                 <CardDescription className="line-clamp-3">
-                                    {event.description || "No description provided."}
+                                    {event.description}
                                 </CardDescription>
                             </CardContent>
                             <CardFooter className="text-xs text-muted-foreground justify-between mt-auto pt-4 border-t">

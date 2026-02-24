@@ -38,12 +38,27 @@ const PasswordReset = () => {
         try {
             const res = await axiosInstance.get(`/admin/${orgId}/reset`);
             setResetResult(res.data);
-            // Remove the org from the list after successful reset
             setOrganizers(prev => prev.filter(o => o._id !== orgId));
             setSelectedOrg(null);
         } catch (err) {
             console.error("Failed to reset password", err);
             setResetResult({ error: err.response?.data?.error || "Reset failed" });
+        } finally {
+            setResetting(false);
+        }
+    };
+
+    const handleReject = async (orgId) => {
+        setResetting(true);
+        setResetResult(null);
+        try {
+            await axiosInstance.patch(`/admin/${orgId}/reject`);
+            setResetResult({ message: "Request rejected" });
+            setOrganizers(prev => prev.filter(o => o._id !== orgId));
+            setSelectedOrg(null);
+        } catch (err) {
+            console.error("Failed to reject request", err);
+            setResetResult({ error: err.response?.data?.error || "Reject failed" });
         } finally {
             setResetting(false);
         }
@@ -64,7 +79,9 @@ const PasswordReset = () => {
                         ) : (
                             <div>
                                 <p className="text-green-600 font-semibold">{resetResult.message}</p>
-                                <p className="text-sm mt-1">New Password: <code className="bg-gray-100 px-2 py-1 rounded">{resetResult.newPassword}</code></p>
+                                {resetResult.newPassword && (
+                                    <p className="text-sm mt-1">New Password: <code className="bg-gray-100 px-2 py-1 rounded">{resetResult.newPassword}</code></p>
+                                )}
                             </div>
                         )}
                     </CardContent>
@@ -108,12 +125,21 @@ const PasswordReset = () => {
                             <p className="font-semibold">Reason for reset:</p>
                             <p className="mt-1 text-muted-foreground">{selectedOrg.resetRequest?.reason}</p>
                         </div>
-                        <Button
-                            onClick={() => handleReset(selectedOrg._id)}
-                            disabled={resetting}
-                        >
-                            {resetting ? "Resetting..." : "Reset Password"}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => handleReset(selectedOrg._id)}
+                                disabled={resetting}
+                            >
+                                {resetting ? "Processing..." : "Approve & Reset"}
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={() => handleReject(selectedOrg._id)}
+                                disabled={resetting}
+                            >
+                                {resetting ? "Processing..." : "Reject"}
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             )}

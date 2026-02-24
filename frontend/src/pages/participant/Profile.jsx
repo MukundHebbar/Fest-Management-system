@@ -22,6 +22,8 @@ const Profile = () => {
     });
     const [selectedTags, setSelectedTags] = useState([]);
     const [allAvailableTags, setAllAvailableTags] = useState([]);
+    const [followedClubs, setFollowedClubs] = useState([]);
+    const [allClubs, setAllClubs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -34,10 +36,9 @@ const Profile = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            console.log("Free");
             const res = await axiosInstance.get("/participants/me");
 
-            const { participant, all_tags } = res.data;
+            const { participant, all_tags, all_clubs } = res.data;
 
             setProfile({
                 firstName: participant.firstName || "",
@@ -52,6 +53,12 @@ const Profile = () => {
 
             const allTags = (all_tags || []).map(t => t.tag || t.type || t).filter(Boolean);
             setAllAvailableTags(allTags);
+
+            // Clubs: followingOrganizations is populated with { _id, name }
+            const followedNames = (participant.followingOrganizations || []).map(o => o.name || o);
+            setFollowedClubs(followedNames);
+            setAllClubs((all_clubs || []).map(c => c.name));
+
             setLoading(false);
         } catch (err) {
             console.error(err);
@@ -72,6 +79,14 @@ const Profile = () => {
         }
     };
 
+    const handleClubToggle = (clubName) => {
+        if (followedClubs.includes(clubName)) {
+            setFollowedClubs(followedClubs.filter(c => c !== clubName));
+        } else {
+            setFollowedClubs([...followedClubs, clubName]);
+        }
+    };
+
     const handleSave = async () => {
         setError(null);
         setSuccessMsg(null);
@@ -79,9 +94,10 @@ const Profile = () => {
         try {
             await Promise.all([
                 axiosInstance.put("/participants/me", profile),
-                axiosInstance.put("/participants/me/tags", { tags: selectedTags })
+                axiosInstance.put("/participants/me/tags", { tags: selectedTags }),
+                axiosInstance.put("/participants/me/organizations", { followingOrganizations: followedClubs })
             ]);
-            setSuccessMsg("Profile and interests updated successfully!");
+            setSuccessMsg("Profile, interests, and followed clubs updated!");
         } catch (err) {
             console.error(err);
             setError(err.response?.data?.error || "Failed to update profile");
@@ -154,6 +170,30 @@ const Profile = () => {
                                 >
                                     {selectedTags.includes(tag) && <span className="mr-1">✓</span>}
                                     {tag}
+                                </Badge>
+                            ))
+                        }
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Following Clubs</CardTitle>
+                    <CardDescription>Follow clubs to stay updated on their events.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                        {allClubs.length === 0 ? <p className="text-muted-foreground">No clubs available.</p> :
+                            allClubs.map(club => (
+                                <Badge
+                                    key={club}
+                                    variant={followedClubs.includes(club) ? "default" : "secondary"}
+                                    className="cursor-pointer text-sm py-1 px-3 hover:opacity-80 transition-opacity"
+                                    onClick={() => handleClubToggle(club)}
+                                >
+                                    {followedClubs.includes(club) && <span className="mr-1">✓</span>}
+                                    {club}
                                 </Badge>
                             ))
                         }

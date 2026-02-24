@@ -1,5 +1,6 @@
 import UserModel from "../models/user.model.js";
 import OrganizerModel from "../models/organizer.model.js";
+import { EventsModel, registrationsModel, teamsModel } from "../models/events.model.js";
 import { autoGenerateCredentials, autoGenPassword } from "../utils/credentials.js";
 
 export const addOrganization = async (req, res) => {
@@ -9,9 +10,8 @@ export const addOrganization = async (req, res) => {
     try {
         // first we create the user entry in the users collection
         const orgCount = await OrganizerModel.countDocuments();
-
-        // we ll make an increment - to avoid zero indexing
-        const { email, password, passwordHash } = await autoGenerateCredentials(orgCount + 1);
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000); 
+        const { email, password, passwordHash } = await autoGenerateCredentials(orgCount + randomSuffix);
 
         const newUser = new UserModel({
             username: email,
@@ -46,10 +46,47 @@ export const addOrganization = async (req, res) => {
 
 
 export const removeOrganization = async (req, res) => {
-    ;
-    //make use of url parameter to get organizer id to be deleted - 
-    // this will be for a delete method
+    try {
+        const orgId = req.params.id;
+        const organizer = await OrganizerModel.findById(orgId);
+        if (!organizer) {
+            return res.status(404).json({ error: "Organizer not found" });
+        }
 
+        // 1. Get all event IDs for this organizer
+        const events = await EventsModel.find({ organizer: orgId }).select('_id');
+        const eventIds = events.map(e => e._id);
+
+        // 2. Get all teamIds from registrations for these events
+        const teamIds = await registrationsModel.distinct('teamId', {
+            EventId: { $in: eventIds },
+            teamId: { $ne: null }
+        });
+
+        // 3. Delete teams
+        if (teamIds.length > 0) {
+            await teamsModel.deleteMany({ _id: { $in: teamIds } });
+        }
+
+        // 4. Delete registrations
+        if (eventIds.length > 0) {
+            await registrationsModel.deleteMany({ EventId: { $in: eventIds } });
+        }
+
+        // 5. Delete events
+        await EventsModel.deleteMany({ organizer: orgId });
+
+        // 6. Delete organizer
+        await OrganizerModel.findByIdAndDelete(orgId);
+
+        // 7. Delete user
+        await UserModel.findByIdAndDelete(organizer.user);
+
+        return res.status(200).json({ message: "Organizer and all related data deleted" });
+    } catch (error) {
+        console.log("Error in admin removeOrganization controller", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
 }
 
 export const getAllOrganizers = async (req, res) => {
@@ -83,11 +120,18 @@ export const resetPassword = async (req, res) => {
         const organizer = await OrganizerModel.findById(orgId);
         if (!organizer.resetRequest.reason) {
             return res.status(400).json({ error: "Did not request a reset" });
-
         }
 
         const user = await UserModel.findById(organizer.user);
         const { password, passwordHash } = await autoGenPassword();
+
+        // Update the pending history entry to Approved
+        const pendingEntry = organizer.resetHistory.find(r => r.status === 'Pending');
+        if (pendingEntry) {
+            pendingEntry.status = 'Approved';
+            pendingEntry.resolvedAt = new Date();
+        }
+
         organizer.resetRequest.reason = null;
         user.passwordHash = passwordHash;
 
@@ -96,10 +140,33 @@ export const resetPassword = async (req, res) => {
 
         return res.status(200).json({ message: "Password reset successful", newPassword: password });
 
-
     }
     catch (error) {
         console.log("Error in admin resetPassword controller", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+}
+
+export const rejectResetRequest = async (req, res) => {
+    try {
+        const orgId = req.params.id;
+        const organizer = await OrganizerModel.findById(orgId);
+        if (!organizer.resetRequest.reason) {
+            return res.status(400).json({ error: "No pending request" });
+        }
+
+        const pendingEntry = organizer.resetHistory.find(r => r.status === 'Pending');
+        if (pendingEntry) {
+            pendingEntry.status = 'Rejected';
+            pendingEntry.resolvedAt = new Date();
+        }
+
+        organizer.resetRequest.reason = null;
+        await organizer.save();
+
+        return res.status(200).json({ message: "Request rejected" });
+    } catch (error) {
+        console.log("Error in admin rejectResetRequest controller", error);
         return res.status(500).json({ error: "Internal Server Error" });
     }
 }

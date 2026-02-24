@@ -43,8 +43,9 @@ const ParticipantEvents = () => {
                 setEvents(eventsRes.data);
                 setFilteredEvents(eventsRes.data);
 
-                // Extract followed organization IDs
-                const followed = meRes.data.participant?.followingOrganizations || [];
+                // Extract followed organization IDs as strings for comparison
+                const followed = (meRes.data.participant?.followingOrganizations || [])
+                    .map(o => (o._id || o).toString());
                 setFollowingOrgs(followed);
 
                 setLoading(false);
@@ -99,7 +100,7 @@ const ParticipantEvents = () => {
         // 5. Filter by Followed Clubs
         if (showFollowedOnly) {
             result = result.filter(e => {
-                const orgId = e.organizer?._id || e.organizer;
+                const orgId = (e.organizer?._id || e.organizer || '').toString();
                 return followingOrgs.includes(orgId);
             });
         }
@@ -167,7 +168,7 @@ const ParticipantEvents = () => {
                 </div>
 
                 <Button
-                    
+
                     onClick={() => {
                         setSearchQuery('');
                         setFilterType('all');
@@ -194,7 +195,7 @@ const ParticipantEvents = () => {
                             <CardHeader className="pb-2">
                                 <div className="flex justify-between">
                                     <CardTitle className="text-lg">{event.name}</CardTitle>
-                                    <Badge variant="outline">{event.status}</Badge>
+                                    {event.status !== 'Published' && <Badge variant="outline">{event.status}</Badge>}
                                 </div>
                                 <CardDescription>by {event.organizer?.name}</CardDescription>
                             </CardHeader>

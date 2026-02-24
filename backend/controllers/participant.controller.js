@@ -2,18 +2,20 @@ import UserModel from '../models/user.model.js'
 import ParticipantModel from '../models/participant.model.js';
 import OrganizerModel from '../models/organizer.model.js';
 import { TagsModel, registrationsModel, EventsModel, teamsModel } from '../models/events.model.js';
+import { sendTicketEmail } from '../utils/mailer.js';
 
 export const fetchMe = async (req, res) => {
     try {
         const userId = req.user._id;
-        const participant = await ParticipantModel.findOne({ user: userId });
+        const participant = await ParticipantModel.findOne({ user: userId })
+            .populate('followingOrganizations', 'name');
 
         if (!participant) {
             return res.status(401).json({ error: "Participant profile not found" });
         }
-        const all_tags = await TagsModel.find().lean(); //lil bit of optimization  
-        //   participant.all_tags = all_tags; // list. of all tags so that user can also select ones not selected
-        res.status(200).json({ participant, all_tags });
+        const all_tags = await TagsModel.find().lean();
+        const all_clubs = await OrganizerModel.find().select('name').lean();
+        res.status(200).json({ participant, all_tags, all_clubs });
     } catch (error) {
         console.log("twas an Error in fetchMe controller", error.message);
         res.status(500).json({ error: "Internal Server Error" });
@@ -302,6 +304,11 @@ export const registerForEvent = async (req, res) => {
             return res.status(400).json({ error: "Registration deadline has passed" });
         }
 
+        // Check eligibility: if event is IIITH-only, participant must be IIITH
+        if (event.eligibility === 'Y' && participant.type !== 'Y') {
+            return res.status(403).json({ error: "This event is restricted to IIIT-H students only" });
+        }
+
         const registrationData = {
             participantId: participant._id,
             EventId: event._id,
@@ -347,19 +354,42 @@ export const registerForEvent = async (req, res) => {
         participant.registered.push(newRegistration._id);
         await participant.save();
 
-        // If a team was created, include the teamCode so leader can share it
+        const organizer = await OrganizerModel.findById(event.organizer).select('name');
+        const orgName = organizer?.name || 'Unknown';
+
         const responseData = { message: "Registered successfully", registration: newRegistration };
         if (newRegistration.teamId) {
             const team = await teamsModel.findById(newRegistration.teamId).select('teamCode teamName capacity currentLength');
             if (team) {
                 responseData.team = { teamCode: team.teamCode, teamName: team.teamName };
 
-                // If team is now full, mark all team registrations (including this one) as complete
                 if (team.currentLength >= team.capacity) {
                     await registrationsModel.updateMany(
                         { teamId: team._id },
                         { $set: { status: true } }
                     );
+
+                    const teamRegs = await registrationsModel.find({ teamId: team._id }).populate('participantId');
+                    for (const reg of teamRegs) {
+                        const user = await UserModel.findById(reg.participantId?.user);
+                        if (user) {
+                            try {
+                                sendTicketEmail(user.username, event.name, reg.ticketId, orgName, event.startDate, event.endDate);
+                            } catch (error) {
+                                console.log("Error in sending mail", error);
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            const user = await UserModel.findById(req.user._id);
+            if (user) {
+                try {
+                    sendTicketEmail(user.username, event.name, newRegistration.ticketId, orgName, event.startDate, event.endDate);
+                }
+                catch (error) {
+                    console.log("Mailing error ", error);
                 }
             }
         }
@@ -378,14 +408,23 @@ export const registerForEvent = async (req, res) => {
 
 export const getNonDraftEvents = async (req, res) => {
     try {
-        // Fetch all events where status is NOT 'Draft'
         const events = await EventsModel.find({ status: { $ne: 'Draft' } })
-            .populate('organizer', 'name email') // Populate organizer details (optional but good for UI)
-            .sort({ createdAt: -1 }); // Sort by newest first
+            .populate('organizer', 'name email')
+            .sort({ createdAt: -1 });
 
         res.status(200).json(events);
     } catch (error) {
         console.log("Error in getNonDraftEvents controller", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+export const getAllClubs = async (req, res) => {
+    try {
+        const clubs = await OrganizerModel.find().select('name email category description').lean();
+        res.status(200).json(clubs);
+    } catch (error) {
+        console.log("Error in getAllClubs controller", error.message);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };

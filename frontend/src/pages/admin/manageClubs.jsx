@@ -54,6 +54,19 @@ const ManageClubs = () => {
         }
     };
 
+    const handleDelete = async (orgId) => {
+        if (!window.confirm("Are you sure? This will permanently delete the organizer, all their events, registrations, and teams.")) return;
+        setError(null);
+        try {
+            await axiosInstance.delete(`/admin/${orgId}/remove`);
+            setOrganizers(prev => prev.filter(o => o._id !== orgId));
+            setSelectedOrg(null);
+        } catch (err) {
+            console.error("Failed to delete organizer", err);
+            setError(err.response?.data?.error || "Failed to delete organizer.");
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-muted-foreground">Loading organizers...</div>;
 
     return (
@@ -112,6 +125,15 @@ const ManageClubs = () => {
                         {selectedOrg?.category && <p><span className="font-semibold">Category: </span>{selectedOrg.category}</p>}
                         {selectedOrg?.description && <p><span className="font-semibold">Description: </span>{selectedOrg.description}</p>}
                         <p><span className="font-semibold">Reset Request: </span>{selectedOrg?.resetRequest?.reason || "None"}</p>
+                        <div className="border-t pt-3">
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDelete(selectedOrg._id)}
+                            >
+                                Delete Organizer
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

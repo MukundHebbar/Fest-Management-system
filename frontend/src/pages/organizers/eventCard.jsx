@@ -36,7 +36,6 @@ const MerchandiseSection = ({ control, register, isDraft }) => {
                     <Input
                         id="item-name"
                         disabled={!isDraft}
-                        placeholder="e.g. T-Shirt"
                         {...register("merchandise.items.name", { required: true })}
                     />
                 </div>
@@ -57,21 +56,18 @@ const MerchandiseSection = ({ control, register, isDraft }) => {
                 {variantFields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-3 gap-2 items-end">
                         <Input
-                            placeholder="Size (e.g. S, M)"
                             disabled={!isDraft}
                             {...register(`merchandise.items.variants.${index}.size`)}
                         />
                         <Input
-                            placeholder="Color (e.g. Red)"
                             disabled={!isDraft}
                             {...register(`merchandise.items.variants.${index}.color`)}
                         />
                         <div className="flex gap-2">
                             <Input
                                 type="number"
-                                placeholder="Stock"
                                 disabled={!isDraft}
-                                {...register(`merchandise.items.variants.${index}.stock`)}
+                                {...register(`merchandise.items.variants.${index}.stock`, { valueAsNumber: true })}
                             />
                             {isDraft && (
                                 <Button type="button" size="icon" onClick={() => removeVariant(index)}>
@@ -100,7 +96,7 @@ const RegistrationFormSection = ({ control, register, isDraft }) => {
     return (
         <div className="space-y-4 rounded-md border p-4 bg-gray-50">
             <h3 className="font-semibold text-lg">Registration Form Configuration</h3>
-            <p className="text-sm text-muted-foreground mb-4">Customize the form participants will fill during registration.</p>
+
 
             <div className="space-y-4">
                 {fields.map((field, index) => (
@@ -108,7 +104,6 @@ const RegistrationFormSection = ({ control, register, isDraft }) => {
                         <div className="md:col-span-4 space-y-2">
                             <Label>Label</Label>
                             <Input
-                                placeholder="e.g. Phone Number"
                                 disabled={!isDraft}
                                 {...register(`registrationForm.${index}.label`, { required: true })}
                             />
@@ -129,11 +124,10 @@ const RegistrationFormSection = ({ control, register, isDraft }) => {
                         <div className="md:col-span-4 space-y-2">
                             <Label>Options (comma separated)</Label>
                             <Input
-                                placeholder="Option 1, Option 2"
                                 disabled={!isDraft}
                                 {...register(`registrationForm.${index}.options`)}
                             />
-                            <p className="text-xs text-muted-foreground">Only for Dropdown/Checkbox</p>
+
                         </div>
 
                         <div className="md:col-span-1 flex items-center justify-center h-full pt-6">
@@ -403,7 +397,7 @@ const EventCard = () => {
                                     <Label htmlFor="TeamEvent">
                                         Team Event
                                     </Label>
-                                    <p className="text-xs text-muted-foreground">Participants will register as teams</p>
+
                                 </div>
                             </div>
                         )}
@@ -502,7 +496,6 @@ const EventCard = () => {
                             <Input
                                 id="tags"
                                 disabled={!isDraft}
-                                placeholder="Technology, Workshop, Coding"
                                 {...register("tags")}
                             />
                         </div>

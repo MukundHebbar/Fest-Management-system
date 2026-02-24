@@ -31,16 +31,16 @@ const user_schema = new mongoose.Schema(
             type: String,
         },
         followingOrganizations: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Organization"
-        }], 
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Organizer"
+        }],
 
         // list of possible tags are stored in the database - check events.model.js . 
-        tags:[{ // tags selected by  the user for areas of interest. 
-            type:"String",
+        tags: [{ // tags selected by  the user for areas of interest. 
+            type: "String",
         }], // here the backend must check before adding if the tags are valid or not
-        
-        registered:[ // should probably change this to point to registrations
+
+        registered: [ // should probably change this to point to registrations
             {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: "Registration",

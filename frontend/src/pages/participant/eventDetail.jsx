@@ -209,7 +209,7 @@ const EventDetail = () => {
         isBlocking = true;
     }
 
-    const formatDate = (date) => date ? new Date(date).toLocaleString() : 'TBA';
+    const formatDate = (date) => date ? new Date(date).toLocaleDateString() : 'TBA';
 
     return (
         <div className="container mx-auto p-4 max-w-3xl">

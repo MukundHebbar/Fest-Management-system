@@ -12,9 +12,12 @@ import OrganizerLayout from './layouts/Organizer';
 import OrganizerDashboard from './pages/organizers/dashboard';
 import EventCard from './pages/organizers/eventCard';
 import OrganizerProfile from './pages/organizers/profile';
+import OrganizerPasswordReset from './pages/organizers/passwordReset';
 import ParticipantEvents from './pages/participant/events';
 import EventDetail from './pages/participant/eventDetail';
 import ParticipantDashboard from './pages/participant/ParticipantDashboard';
+import Clubs from './pages/participant/clubs';
+import ClubInfo from './pages/participant/clubinfo';
 import AdminLayout from './layouts/Admin';
 import AdminDashboard from './pages/admin/dashboard';
 import AdminEventDetail from './pages/admin/eventDetail';
@@ -41,6 +44,8 @@ function App() {
                   <Route path="/events/:id" element={<EventDetail />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/dashboard" element={<ParticipantDashboard />} />
+                  <Route path="/clubs" element={<Clubs />} />
+                  <Route path="/clubs/:id" element={<ClubInfo />} />
 
                 </Route>
               </Route>
@@ -52,6 +57,7 @@ function App() {
                   <Route path="/organizer/create" element={<EventCard />} />
                   <Route path="/organizer/event/:id" element={<EventCard />} />
                   <Route path="/organizer/profile" element={<OrganizerProfile />} />
+                  <Route path="/organizer/reset" element={<OrganizerPasswordReset />} />
                 </Route>
               </Route>
 

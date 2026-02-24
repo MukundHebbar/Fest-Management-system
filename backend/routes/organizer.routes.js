@@ -5,7 +5,7 @@ import {
     getEvents, updateEvents, createDraft, publishEvent, fetchEventAnalysis
     , requestPasswordReset, putOrganizer,
     getOrganizer, getEventRegistrations, getRegistrationDetails, getRegistrationFile, exportRegistrationsCsv,
-    manageAttendance
+    manageAttendance, getEventTeams, getResetHistory
 } from '../controllers/organizer.controller.js'
 //this defines events and organizer routes
 // the events endpoints are specifically for organizers
@@ -21,6 +21,7 @@ router.get("/events/:id/registrations", getEventRegistrations);
 router.get("/registrations/:id", getRegistrationDetails);
 router.get("/registrations/file/:id", getRegistrationFile);
 router.get("/events/:id/registrations/csv", exportRegistrationsCsv);
+router.get("/events/:id/teams", getEventTeams);
 
 router.post("/events", createDraft); // a draft has to be created for an event
 // before publication of the event.
@@ -28,6 +29,7 @@ router.post("/events/:id/publish", publishEvent); // publish an event after draf
 
 
 router.post("/reset", requestPasswordReset);
+router.get("/reset/history", getResetHistory);
 
 router.put("/profile", putOrganizer);
 router.put("/events/:id", updateEvents); // updates an event with edits based on publish or draft    

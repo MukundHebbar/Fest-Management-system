@@ -39,7 +39,7 @@ const AdminEventDetail = () => {
     if (error) return <div className="text-red-500">{error}</div>;
     if (!event) return <div>Event not found</div>;
 
-    const formatDate = (date) => date ? new Date(date).toLocaleString() : 'TBA';
+    const formatDate = (date) => date ? new Date(date).toLocaleDateString() : 'TBA';
 
     return (
         <div className="container mx-auto p-4 max-w-3xl">

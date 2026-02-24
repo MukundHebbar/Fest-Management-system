@@ -4,12 +4,15 @@
 
 ## emails for registrations
 
-## admin features - password resets, add and remove organizers. 
+## display ticket properly - for team events show team name. 
+
+
 
 ## bot protection using captcha
 
-## handle team registrations properly
-## handle eligibility properly
+
+## organizer - event analytics as a part of the dashboard as well.
+
 
 
 ## Frontend

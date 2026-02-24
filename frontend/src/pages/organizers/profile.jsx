@@ -85,7 +85,6 @@ const OrganizerProfile = () => {
             <Card>
                 <CardHeader>
                     <CardTitle>Organization Details</CardTitle>
-                    <CardDescription>Manage your organization's public profile and contact information.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -98,14 +97,12 @@ const OrganizerProfile = () => {
                                 className="bg-muted"
                                 {...register("login")}
                             />
-                            <p className="text-xs text-muted-foreground">This is your login identifier and cannot be changed here.</p>
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="name">Organization Name</Label>
                             <Input
                                 id="name"
-                                placeholder="e.g. Coding Club"
                                 {...register("name", { required: "Name is required" })}
                             />
                         </div>
@@ -114,7 +111,6 @@ const OrganizerProfile = () => {
                             <Label htmlFor="category">Category</Label>
                             <Input
                                 id="category"
-                                placeholder="e.g. Technical, Cultural, Sports"
                                 {...register("category")}
                             />
                         </div>
@@ -124,17 +120,14 @@ const OrganizerProfile = () => {
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="contact@example.com"
                                 {...register("email", { required: "Contact email is required" })}
                             />
-                            <p className="text-xs text-muted-foreground">Publicly visible email for inquiries.</p>
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="description">Description</Label>
                             <Textarea
                                 id="description"
-                                placeholder="Describe your organization..."
                                 rows={5}
                                 {...register("description")}
                             />

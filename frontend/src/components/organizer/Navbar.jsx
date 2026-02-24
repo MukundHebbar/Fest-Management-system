@@ -21,10 +21,8 @@ const Navbar = () => {
 
     const displayItems = [
         { item: 'Dashboard', path: '/organizer/dashboard' },
-        ,
-        {
-            item: 'Profile', path: '/organizer/profile',
-        }
+        { item: 'Profile', path: '/organizer/profile' },
+        { item: 'Reset Password', path: '/organizer/reset' },
     ]
     return (
         <nav className="flex items-center justify-between px-6 py-4 border-b bg-white">
@@ -43,7 +41,7 @@ const Navbar = () => {
             </NavigationMenu>
 
             <button onClick={handleLogout}
-            className={`${navigationMenuTriggerStyle()} text-white hover:text-white`}>
+                className={`${navigationMenuTriggerStyle()} text-white hover:text-white`}>
                 Logout
             </button>
         </nav>

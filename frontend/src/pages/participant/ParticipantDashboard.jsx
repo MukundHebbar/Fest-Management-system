@@ -43,12 +43,22 @@ const ParticipantDashboard = () => {
     if (loading) return <div className="p-4">Loading dashboard...</div>;
     if (error) return <div className="p-4 text-red-500">{error}</div>;
 
+    const now = new Date();
+
     const upcomingEvents = registrations.filter(reg =>
-        reg.EventId && (reg.EventId.status === 'Published' || reg.EventId.status === 'Ongoing')
+        reg.EventId && (reg.EventId.status === 'Published' || reg.EventId.status === 'Ongoing') &&
+        (!reg.EventId.endDate || new Date(reg.EventId.endDate) >= now)
     );
 
-    const pastEvents = registrations.filter(reg =>
-        !reg.EventId || (reg.EventId.status !== 'Published' && reg.EventId.status !== 'Ongoing')
+    const completedEvents = registrations.filter(reg =>
+        reg.EventId && (
+            reg.EventId.status === 'Closed' ||
+            (reg.EventId.endDate && new Date(reg.EventId.endDate) < now)
+        )
+    );
+
+    const otherEvents = registrations.filter(reg =>
+        !reg.EventId
     );
 
     const TicketDialog = ({ registration }) => {
@@ -121,7 +131,6 @@ const ParticipantDashboard = () => {
                                 Registered on {new Date(registration.createdAt).toLocaleDateString()}
                             </CardDescription>
                         </div>
-                        <Badge >{event.status}</Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="pb-2 text-sm">
@@ -162,11 +171,14 @@ const ParticipantDashboard = () => {
                 )}
             </section>
 
-            {pastEvents.length > 0 && (
+            {completedEvents.length > 0 && (
                 <section>
-                    <h2 className="text-xl font-semibold mb-4 text-gray-500">History</h2>
+                    <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                        Completed
+                        <Badge className="ml-2" variant="secondary">{completedEvents.length}</Badge>
+                    </h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 opacity-75">
-                        {pastEvents.map(reg => (
+                        {completedEvents.map(reg => (
                             <EventCard key={reg._id} registration={reg} />
                         ))}
                     </div>

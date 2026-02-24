@@ -2,8 +2,10 @@ import express from 'express';
 import { protectRoute } from '../middleware/auth.middleware.js';
 import upload from '../middleware/upload.middleware.js';
 
-import { fetchMe, putMe, putMyInterests, putMyOrganizations, registerForEvent,
-     getNonDraftEvents, getEventById, getMyRegistrations } from '../controllers/participant.controller.js';
+import {
+    fetchMe, putMe, putMyInterests, putMyOrganizations, registerForEvent,
+    getNonDraftEvents, getEventById, getMyRegistrations, getAllClubs
+} from '../controllers/participant.controller.js';
 
 
 
@@ -28,7 +30,8 @@ router.put("/me/organizations", putMyOrganizations);
 router.post("/register/:id", upload.any(), registerForEvent);
 
 router.get("/events", getNonDraftEvents);
+router.get("/clubs", getAllClubs);
 router.get("/events/:id", getEventById);
-router.get("/registrations", getMyRegistrations); 
+router.get("/registrations", getMyRegistrations);
 
 export default router; 
