@@ -3,21 +3,20 @@ import organizerModel from '../models/organizer.model.js';
 import OrganizerModel from '../models/organizer.model.js'
 import UserModel from '../models/user.model.js';
 
-//middle ware has to ensure only organizations have access  to these endpoints
 export const getEvents = async (req, res) => {
     try {
         if (!req.user) {
             return res.status(401).json({ error: "Havent authenticated" });
         }
         const userId = req.user._id;
-        // 1. Find the organizer profile for this user
+
         if (!req.orgId) {
             return res.status(401).json({ error: "Not an organizer - something is wrong" });
         }
 
         const orgId = req.orgId;
 
-        // 2. Find all events where the organizer matches
+
         const events = await EventsModel.find({ organizer: orgId });
         res.status(200).json(events);
     } catch (error) {
@@ -27,17 +26,12 @@ export const getEvents = async (req, res) => {
 }
 
 
-// the frontend will send a json with any  fields user wants to send 
-/** user client will send fields corresponding to schema 
- * for ones where client didnt send anything - we gotta enter as "" as i defined required in schema
-*/
 
-export const updateEvents = async (req, res) => { // this does not allow changing status
+export const updateEvents = async (req, res) => {
     const eventId = req.params.id;
     const event = await EventsModel.findById(eventId);
     try {
         if (!event) {
-            console.log("Not an event");
             return res.status(400).json({ error: "Event not found" });
         }
         const allFields = [
@@ -46,39 +40,35 @@ export const updateEvents = async (req, res) => { // this does not allow changin
             'startDate', 'endDate', 'registrationForm', 'merchandise', 'TeamEvents'
         ];
         const publishFields = ['description', 'registrationDeadline',
-            'registrationLimit',] // closing registration is same as preponing deadline
+            'registrationLimit',]
 
-        const updates = {} // dictionary
+        const updates = {}
 
-        // rn expecting the client to send the all the fields - 
-        // as all the fields from the prev version are sent - client has to send thise
-        // along with updates as well
         if (event.status == 'Draft') {
 
             allFields.forEach((field) => { updates[field] = req.body[field] })
             Object.assign(event, updates);
-            // save to db
             await event.save()
         }
         else if (event.status == 'Published') {
             const { description, registrationLimit, registrationDeadline, closeRegistration } = req.body;
 
-            // Update description if it's a non-empty string
+
             if (description && typeof description === 'string' && description.trim().length > 0) {
                 event.description = description;
             }
 
-            // Increase registration limit only
+
             if (registrationLimit && registrationLimit > event.registrationLimit) {
                 event.registrationLimit = registrationLimit;
             }
 
-            // Handle deadline updates
+
             if (closeRegistration) {
                 event.registrationDeadline = new Date();
             } else if (registrationDeadline) {
                 const newDeadline = new Date(registrationDeadline);
-                // Postpone deadline (must be later than current deadline)
+                // Postpone deadline
                 if (newDeadline > event.registrationDeadline) {
                     event.registrationDeadline = newDeadline;
                 }
@@ -100,13 +90,12 @@ export const publishEvent = async (req, res) => {
     try {
         const event = await EventsModel.findById(eventId);
         if (!event) {
-            console.log("Not an event");
             return res.status(400).json({ error: "Event not found" });
         }
         if (event.status == 'Published' || event.status == 'Ongoing') {
             return res.status(404).json({ error: "Event is already Published" });
         }
-        console.log("niggesh ")
+
         const flag = false;
         const coreFields = [
             'name', 'description', 'eventType', 'eligibility',
@@ -117,27 +106,26 @@ export const publishEvent = async (req, res) => {
         const missing = coreFields.filter(field => !event[field]);
 
         if (event.eventType == 'normal') {
-            // check the validity of registration form
+
             if (!event.registrationForm)
                 missing.push("registration Form");
         }
         else if (event.TeamEvent == true) {
-            console.log("Merch event no team");
+
             return res.status(401).json({ error: "merch events cant be team based" });
         }
         else {
-            const merchandise = event.merchandise; // assuming that the browser will send correctly
+            const merchandise = event.merchandise;
             if (!merchandise) {
-                console.log("Screwed here ")
                 missing.push("merchandise form");
             }
         }
         if (missing.length > 0) {
-            console.log(event)
+
             return res.status(401).json({ error: "Some fields are missing", missing: missing })
         }
         event.status = "Published"
-        await event.save(); // save as published
+        await event.save();
         return res.status(201).json(event);
     } catch (error) {
 
@@ -158,10 +146,9 @@ export const createDraft = async (req, res) => {
         if (req.body.eventType == 'normal') delete req.body.merchandise;
 
         const eventData = {
-            ...req.body, // spread operator - spreads all fields sent
-            organizer: req.orgId, // the middleware adds it upon checking the role of the user
+            ...req.body,
+            organizer: req.orgId,
             status: 'Draft',
-            // Default fields to ensure consistent state
             tags: req.body.tags || [],
         };
 
@@ -184,27 +171,20 @@ export const createDraft = async (req, res) => {
 }
 
 export const fetchEventAnalysis = async (req, res) => {
-    // req params - will give us the event id for analysis
-    // right now only basic - event details and registrations
-    // will later implement the per participant details fetching as well
-
     try {
         const event_id = req.params.id;
 
         const user = await UserModel.findById(req.user._id)
 
         const event = await EventsModel.findById(event_id).lean();
-        if (event.organizer.toString() != req.orgId.toString()) { // had to convert to strings
+        if (event.organizer.toString() != req.orgId.toString()) {
             return res.status(400).json({ error: "Event not found" })
         }
-        // lean lets us add our json fields into event
+
         if (!event) {
             return res.status(400).json({ error: "Event not found" });
         }
-        console.log("====================");
-        // this will return the number of registrations for the event, 
-        // also returns - revenue - sum of all participation fees 
-        // or for merch events - sum of all costs/sales made. 
+
         if (event.status != "Draft") {
             const registrations = await registrationsModel.countDocuments({ EventId: event._id });
             const fee = event.registrationFee;
@@ -215,7 +195,7 @@ export const fetchEventAnalysis = async (req, res) => {
         return res.status(201).json(event);
     }
     catch (error) {
-        console.log("Fetch event analysis controller fucked", error);
+        console.log("Fetch event analysis controller error", error);
         return res.status(400).json({ error: "Internal server Error" });
     }
 
@@ -230,7 +210,7 @@ export const requestPasswordReset = async (req, res) => {
         }
         const organizer = await organizerModel.findById(req.orgId);
 
-        // Check if there's already a pending request
+
         const hasPending = organizer.resetHistory.some(r => r.status === 'Pending');
         if (hasPending) {
             return res.status(400).json({ error: "You already have a pending request" });
@@ -253,7 +233,7 @@ export const getResetHistory = async (req, res) => {
         const organizer = await organizerModel.findById(req.orgId).select('resetHistory');
         if (!organizer) return res.status(404).json({ error: "Organizer not found" });
 
-        // Return sorted newest first
+
         const history = [...organizer.resetHistory].sort((a, b) => b.requestedAt - a.requestedAt);
         return res.status(200).json(history);
     } catch (error) {
@@ -317,13 +297,13 @@ export const getEventRegistrations = async (req, res) => {
         const eventId = req.params.id;
         if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
 
-        // Verify ownership
+
         const event = await EventsModel.findById(eventId);
         if (!event || event.organizer.toString() !== req.orgId.toString()) {
             return res.status(403).json({ error: "Unauthorized access to event" });
         }
 
-        // Fetch basic details: ID, Participant Name, Ticket ID
+
         const registrations = await registrationsModel.find({ EventId: eventId })
             .populate('participantId', 'firstName lastName email')
             .select('_id participantId ticketId createdAt attended')
@@ -341,9 +321,6 @@ export const getRegistrationDetails = async (req, res) => {
         const regId = req.params.id;
         if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
 
-        // Ensure the organizer owns the event associated with this registration
-        // Optimization: We could populate EventId and check organizer, or trust that the ID is valid if found
-        // For security, let's populate event
         const registration = await registrationsModel.findById(regId).populate('EventId');
 
         if (!registration) return res.status(404).json({ error: "Registration not found" });
@@ -405,7 +382,7 @@ export const exportRegistrationsCsv = async (req, res) => {
             .select('_id participantId ticketId createdAt attended')
             .sort({ createdAt: -1 });
 
-        // Build CSV
+
         const header = 'Registration ID,First Name,Last Name,Username,Ticket ID,Registration Date,Attended\n';
         const rows = registrations.map(reg => {
             const firstName = reg.participantId?.firstName || '';
@@ -432,15 +409,14 @@ export const exportRegistrationsCsv = async (req, res) => {
 
 
 export const manageAttendance = async (req, res) => {
-    // mark a registration as attended
     try {
         let registration;
 
         if (req.params.regId) {
-            // Lookup by registration ID (manual toggle from registrations list)
+
             registration = await registrationsModel.findById(req.params.regId).populate("EventId");
         } else if (req.params.ticketId && req.params.eventId) {
-            // Lookup by ticketId + eventId (QR scan)
+
             registration = await registrationsModel.findOne({
                 ticketId: req.params.ticketId,
                 EventId: req.params.eventId
@@ -451,7 +427,7 @@ export const manageAttendance = async (req, res) => {
             return res.status(401).json({ error: "Registration Not found" });
         }
 
-        // Check if current date is within event start and end dates
+
         const now = new Date();
         const start = registration.EventId.startDate;
         const end = registration.EventId.endDate;
@@ -463,7 +439,7 @@ export const manageAttendance = async (req, res) => {
             return res.status(400).json({ error: "Event has already ended" });
         }
 
-        // action is a boolean: from URL param (regId route) or request body (ticketId route)
+
         const action = req.params.action !== undefined ? req.params.action === 'true' : req.body.action;
 
         if (action && registration.attended) {
@@ -473,7 +449,7 @@ export const manageAttendance = async (req, res) => {
         registration.attended = action;
         await registration.save();
 
-        // Populate participant name for QR response
+
         await registration.populate('participantId', 'firstName lastName');
 
         return res.status(201).json(registration);
@@ -494,7 +470,7 @@ export const getEventTeams = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized access to event" });
         }
 
-        // Find distinct teamIds from registrations for this event
+
         const teamIds = await registrationsModel.distinct('teamId', { EventId: eventId, teamId: { $ne: null } });
 
         const teams = await Promise.all(teamIds.map(async (teamId) => {

@@ -4,13 +4,9 @@ import { EventsModel, registrationsModel, teamsModel } from "../models/events.mo
 import { autoGenerateCredentials, autoGenPassword } from "../utils/credentials.js";
 
 export const addOrganization = async (req, res) => {
-    // admin client makes a request to create organizer- 
-    // system responds with auto generated email and password
-
     try {
-        // first we create the user entry in the users collection
         const orgCount = await OrganizerModel.countDocuments();
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000); 
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
         const { email, password, passwordHash } = await autoGenerateCredentials(orgCount + randomSuffix);
 
         const newUser = new UserModel({
@@ -23,9 +19,8 @@ export const addOrganization = async (req, res) => {
 
         const newOrganizer = new OrganizerModel({
             user: savedUser._id,
-            name: "organization", // Generic name as requested
+            name: "organization",
             email: email,
-            // category and description empty initially
         });
 
         await newOrganizer.save();
@@ -53,33 +48,33 @@ export const removeOrganization = async (req, res) => {
             return res.status(404).json({ error: "Organizer not found" });
         }
 
-        // 1. Get all event IDs for this organizer
+
         const events = await EventsModel.find({ organizer: orgId }).select('_id');
         const eventIds = events.map(e => e._id);
 
-        // 2. Get all teamIds from registrations for these events
+
         const teamIds = await registrationsModel.distinct('teamId', {
             EventId: { $in: eventIds },
             teamId: { $ne: null }
         });
 
-        // 3. Delete teams
+
         if (teamIds.length > 0) {
             await teamsModel.deleteMany({ _id: { $in: teamIds } });
         }
 
-        // 4. Delete registrations
+
         if (eventIds.length > 0) {
             await registrationsModel.deleteMany({ EventId: { $in: eventIds } });
         }
 
-        // 5. Delete events
+
         await EventsModel.deleteMany({ organizer: orgId });
 
-        // 6. Delete organizer
+
         await OrganizerModel.findByIdAndDelete(orgId);
 
-        // 7. Delete user
+
         await UserModel.findByIdAndDelete(organizer.user);
 
         return res.status(200).json({ message: "Organizer and all related data deleted" });
@@ -125,7 +120,7 @@ export const resetPassword = async (req, res) => {
         const user = await UserModel.findById(organizer.user);
         const { password, passwordHash } = await autoGenPassword();
 
-        // Update the pending history entry to Approved
+
         const pendingEntry = organizer.resetHistory.find(r => r.status === 'Pending');
         if (pendingEntry) {
             pendingEntry.status = 'Approved';

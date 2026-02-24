@@ -22,10 +22,7 @@ export const fetchMe = async (req, res) => {
     }
 };
 
-// separate enpoint for interests followings and for participant details
-
-
-export const putMe = async (req, res) => { // we will always get the full list of participant details
+export const putMe = async (req, res) => {
     try {
         const userId = req.user._id;
         const { firstName, lastName, orgName, contactNumber } = req.body;
@@ -78,17 +75,16 @@ export const putMyInterests = async (req, res) => {
 };
 
 
-
 export const putMyOrganizations = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { followingOrganizations } = req.body; // Expecting an array of organization names
+        const { followingOrganizations } = req.body;
 
         if (!followingOrganizations || !Array.isArray(followingOrganizations)) {
             return res.status(400).json({ error: "followingOrganizations must be an array of organization names" });
         }
 
-        // Verify names and get their IDs
+
         const validOrganizers = await OrganizerModel.find({ name: { $in: followingOrganizations } });
         const validOrganizerIds = validOrganizers.map(org => org._id);
 
@@ -108,7 +104,7 @@ export const putMyOrganizations = async (req, res) => {
     }
 };
 
-// Helper: uploads files to GridFS, returns array of { fieldname, id }
+
 const uploadFilesToGridFS = async (files) => {
     const { gridfsBucket } = await import('../config/db.js');
     const { Readable } = await import('stream');
@@ -117,27 +113,26 @@ const uploadFilesToGridFS = async (files) => {
         throw new Error("File upload service unavailable");
     }
 
-    // Process all file uploads concurrently
+
     const uploadPromises = files.map(file => {
         return new Promise((resolve, reject) => {
             const filename = `${Date.now()}-${file.originalname}`;
 
-            // Create readable stream from buffer
+
             const readableStream = Readable.from(file.buffer);
 
-            // Create upload stream to GridFS
+
             const uploadStream = gridfsBucket.openUploadStream(filename, {
                 contentType: file.mimetype
             });
 
-            // Pipe buffer to GridFS
+
             readableStream.pipe(uploadStream)
                 .on('error', (error) => {
                     console.error("Stream error:", error);
                     reject(error);
                 })
                 .on('finish', () => {
-                    console.log(`File uploaded: ${filename}, ID: ${uploadStream.id}`);
                     resolve({ fieldname: file.fieldname, id: uploadStream.id });
                 });
         });
@@ -146,23 +141,22 @@ const uploadFilesToGridFS = async (files) => {
     return await Promise.all(uploadPromises);
 };
 
-// Helper: handles team logic for normal events, returns teamId or null
 const handleTeamRegistration = async (req, event) => {
-    const joinTeam = req.body.joinTeam; // contains team code - you want to join
-    let createTeam = req.body.createTeam; // contains team name
+    const joinTeam = req.body.joinTeam;
+    let createTeam = req.body.createTeam;
 
-    // FormData sends objects as JSON strings, so parse if needed
+
     if (typeof createTeam === 'string') {
         try { createTeam = JSON.parse(createTeam); } catch (e) { createTeam = null; }
     }
 
     if (joinTeam && event.TeamEvent) {
-        // if the team capacity is already full - reject
+
         const team = await teamsModel.findOne({ teamCode: joinTeam });
         if (!team) {
             throw { status: 404, message: "Team not found" };
         }
-        // search for team with this code - add the member     
+
         if (team.currentLength >= team.capacity) {
             throw { status: 400, message: "Team is full" };
         }
@@ -171,7 +165,7 @@ const handleTeamRegistration = async (req, event) => {
         return team._id;
     }
     else if (createTeam && event.TeamEvent) {
-        // make a team - add user into team. 
+
         const { teamName, capacity } = createTeam;
         if (!teamName || !capacity) {
             throw { status: 400, message: "Team name and capacity are required" };
@@ -195,13 +189,13 @@ const handleTeamRegistration = async (req, event) => {
     return null;
 };
 
-// Helper: parses form responses, uploads files, validates required fields
+
 const handleFormResponse = async (req, event) => {
     if (!event.registrationForm) return null;
 
     let responses = {};
 
-    // Parse non-file responses
+
     if (req.body.formResponse) {
         try {
             responses = JSON.parse(req.body.formResponse);
@@ -211,7 +205,7 @@ const handleFormResponse = async (req, event) => {
         }
     }
 
-    // Handle file uploads explicitly using streams
+
     if (req.files && req.files.length > 0) {
         try {
             const uploadedFiles = await uploadFilesToGridFS(req.files);
@@ -224,11 +218,7 @@ const handleFormResponse = async (req, event) => {
         }
     }
 
-    // Basic validation: Check if required fields are present
     for (const field of event.registrationForm) {
-        // Check if required field exists in responses.
-        // Note: 'false' or 0 are valid answers, so check strictly for undefined/null/empty string if text
-        // But for simplicity, simple existence check (truthy or '0'/'false' exception)
 
         const val = responses[field.label];
         if (field.required) {
@@ -241,7 +231,7 @@ const handleFormResponse = async (req, event) => {
     return responses;
 };
 
-// Helper: handles merchandise variant validation and stock decrement
+
 const handleMerchandiseRegistration = (req, event) => {
     if (!event.merchandise)
         throw { status: 400, message: "No merch selection" };
@@ -261,7 +251,7 @@ const handleMerchandiseRegistration = (req, event) => {
         throw { status: 400, message: "Out of stock" };
     }
 
-    // Decrement stock
+
     targetVariant.stock -= 1;
 
     return {
@@ -285,7 +275,7 @@ export const registerForEvent = async (req, res) => {
             return res.status(404).json({ error: "Participant profile not found" });
         }
 
-        // assuming that backend has sent event specific info in req
+
         const event = await EventsModel.findById(eventId);
 
         if (!event) {
@@ -304,7 +294,7 @@ export const registerForEvent = async (req, res) => {
             return res.status(400).json({ error: "Registration deadline has passed" });
         }
 
-        // Check eligibility: if event is IIITH-only, participant must be IIITH
+
         if (event.eligibility === 'Y' && participant.type !== 'Y') {
             return res.status(403).json({ error: "This event is restricted to IIIT-H students only" });
         }
@@ -322,15 +312,12 @@ export const registerForEvent = async (req, res) => {
                 return res.status(400).json({ error: "Already registered" });
             }
 
-            // Handle team logic
             const teamId = await handleTeamRegistration(req, event);
             if (teamId) {
                 registrationData.teamId = teamId;
-                // Team registration is incomplete until all members join
                 registrationData.status = false;
             }
 
-            // Handle form responses + file uploads
             const formResponse = await handleFormResponse(req, event);
             if (formResponse) registrationData.formResponse = formResponse;
 
@@ -397,7 +384,7 @@ export const registerForEvent = async (req, res) => {
         res.status(201).json(responseData);
     }
     catch (error) {
-        // Handle structured errors thrown by helpers
+
         if (error.status) {
             return res.status(error.status).json({ error: error.message });
         }
@@ -438,12 +425,11 @@ export const getEventById = async (req, res) => {
             return res.status(404).json({ error: "Event not found" });
         }
 
-        // Participants should not see Draft events
         if (event.status === 'Draft') {
-            return res.status(404).json({ error: "Event not found" }); // Mask as 404 for security/UX
+            return res.status(404).json({ error: "Event not found" });
         }
 
-        // If it's a team event and participant is logged in, check for team info
+
         if (event.TeamEvent && req.participantId) {
             const myReg = await registrationsModel.findOne({
                 EventId: eventId,
@@ -453,7 +439,7 @@ export const getEventById = async (req, res) => {
             if (myReg?.teamId) {
                 const team = await teamsModel.findById(myReg.teamId);
 
-                // Find all teammates
+
                 const teamRegs = await registrationsModel.find({ teamId: myReg.teamId })
                     .populate({
                         path: 'participantId',

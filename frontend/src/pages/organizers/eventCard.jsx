@@ -305,14 +305,7 @@ const EventCard = () => {
         }
     };
 
-    // const getStatusVariant = (status) => {
-    //     switch (status?.toLowerCase()) {
-    //         case 'published': return 'default';
-    //         case 'ongoing': return 'secondary';
-    //         case 'closed': return 'destructive';
-    //         default: return 'outline';
-    //     }
-    // };
+
 
     if (loading) return <div className="p-8 text-center text-muted-foreground">Loading event details...</div>;
     if (error && !event && !isCreateMode) return <div className="p-8 text-center text-red-500">{error}</div>;
@@ -326,7 +319,7 @@ const EventCard = () => {
                     {isCreateMode ? 'Create New Event' : 'Manage Event'}
                 </h1>
                 {!isCreateMode && (
-                    <Badge variant="outline" className="text-lg px-4 py-1">
+                    <Badge className="text-lg px-4 py-1">
                         {event?.status}
                     </Badge>
                 )}

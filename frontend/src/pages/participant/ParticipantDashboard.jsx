@@ -136,13 +136,13 @@ const ParticipantDashboard = () => {
                 <CardContent className="pb-2 text-sm">
                     <p className="truncate mb-2">{event.description}</p>
                     <div className="flex gap-2">
-                        {event.eventType === 'merchandise' && <Badge variant="secondary">Merch</Badge>}
+                        {event.eventType === 'merchandise' && <Badge>Merch</Badge>}
                         {registration.merchandise && <Badge >Item Ordered</Badge>}
                     </div>
                 </CardContent>
                 <CardFooter className="pt-2">
                     {registration.status === false ? (
-                        <Badge variant="secondary" className="w-full justify-center py-1">Team Incomplete</Badge>
+                        <Badge className="w-full justify-center py-1">Team Incomplete</Badge>
                     ) : (
                         <TicketDialog registration={registration} />
                     )}
@@ -175,7 +175,7 @@ const ParticipantDashboard = () => {
                 <section>
                     <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                         Completed
-                        <Badge className="ml-2" variant="secondary">{completedEvents.length}</Badge>
+                        <Badge className="ml-2">{completedEvents.length}</Badge>
                     </h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 opacity-75">
                         {completedEvents.map(reg => (

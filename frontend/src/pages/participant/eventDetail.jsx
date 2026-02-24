@@ -226,21 +226,21 @@ const EventDetail = () => {
                                 by {event.organizer?.name}
                             </CardDescription>
                         </div>
-                        <Badge variant={event.status === 'Published' ? 'default' : 'secondary'}>
+                        <Badge>
                             {event.status}
                         </Badge>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex gap-2 text-sm">
-                        <Badge variant="secondary">
+                        <Badge>
                             {event.eventType === 'merchandise' ? 'Merchandise' : 'Standard Event'}
                         </Badge>
-                        <Badge variant="secondary">
+                        <Badge>
                             {event.registrationFee === 0 ? 'Free' : `₹${event.registrationFee}`}
                         </Badge>
                         {event.eligibility === 'Y' && (
-                            <Badge variant="outline">IIIT Only</Badge>
+                            <Badge>IIIT Only</Badge>
                         )}
                     </div>
 
@@ -270,7 +270,7 @@ const EventDetail = () => {
                                 <p className="text-sm font-medium mb-1">Members</p>
                                 <div className="flex flex-wrap gap-1">
                                     {event.teamInfo.members.map((username, i) => (
-                                        <Badge key={i} variant="secondary">{username}</Badge>
+                                        <Badge key={i}>{username}</Badge>
                                     ))}
                                 </div>
                             </CardContent>

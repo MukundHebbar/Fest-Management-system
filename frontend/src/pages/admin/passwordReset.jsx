@@ -133,7 +133,7 @@ const PasswordReset = () => {
                                 {resetting ? "Processing..." : "Approve & Reset"}
                             </Button>
                             <Button
-                                variant="destructive"
+
                                 onClick={() => handleReject(selectedOrg._id)}
                                 disabled={resetting}
                             >

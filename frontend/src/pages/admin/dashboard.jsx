@@ -151,20 +151,20 @@ const AdminDashboard = () => {
                             <CardHeader className="pb-2">
                                 <div className="flex justify-between">
                                     <CardTitle className="text-lg">{event.name}</CardTitle>
-                                    <Badge variant="outline">{event.status}</Badge>
+                                    <Badge>{event.status}</Badge>
                                 </div>
                                 <CardDescription>by {event.organizer?.name}</CardDescription>
                             </CardHeader>
                             <CardContent className="pb-2">
                                 <p className="text-sm truncate mb-2">{event.description}</p>
                                 <div className="flex gap-2 text-xs">
-                                    <Badge variant="secondary">
+                                    <Badge>
                                         {event.eventType === 'merchandise' ? 'Merch' : 'Event'}
                                     </Badge>
-                                    <Badge variant="secondary">
+                                    <Badge>
                                         {event.registrationFee === 0 ? 'Free' : `₹${event.registrationFee}`}
                                     </Badge>
-                                    {event.eligibility === 'Y' && <Badge variant="outline">IIIT Only</Badge>}
+                                    {event.eligibility === 'Y' && <Badge>IIIT Only</Badge>}
                                 </div>
                             </CardContent>
                             <CardFooter className="text-xs text-muted-foreground pt-0">

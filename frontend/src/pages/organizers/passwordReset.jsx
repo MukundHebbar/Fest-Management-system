@@ -24,7 +24,7 @@ const OrganizerPasswordReset = () => {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [message, setMessage] = useState(null); // { type: 'success' | 'error', text }
+    const [message, setMessage] = useState(null);
 
     const fetchHistory = async () => {
         try {
@@ -61,15 +61,14 @@ const OrganizerPasswordReset = () => {
     };
 
     const statusBadge = (status) => {
-        const variant = status === 'Approved' ? 'default' : status === 'Rejected' ? 'destructive' : 'secondary';
-        return <Badge variant={variant}>{status}</Badge>;
+        return <Badge>{status}</Badge>;
     };
 
     return (
         <div className="container mx-auto py-8 space-y-8 max-w-3xl">
             <h1 className="text-2xl font-bold">Password Reset</h1>
 
-            {/* Request Form */}
+
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Request Password Reset</CardTitle>
@@ -86,7 +85,6 @@ const OrganizerPasswordReset = () => {
                                 <Input
                                     value={reason}
                                     onChange={(e) => setReason(e.target.value)}
-                                    placeholder="Why do you need a password reset?"
                                     required
                                 />
                             </div>
@@ -103,7 +101,7 @@ const OrganizerPasswordReset = () => {
                 </CardContent>
             </Card>
 
-            {/* History */}
+
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Request History</CardTitle>

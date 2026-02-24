@@ -127,7 +127,7 @@ const ManageClubs = () => {
                         <p><span className="font-semibold">Reset Request: </span>{selectedOrg?.resetRequest?.reason || "None"}</p>
                         <div className="border-t pt-3">
                             <Button
-                                variant="destructive"
+
                                 size="sm"
                                 onClick={() => handleDelete(selectedOrg._id)}
                             >

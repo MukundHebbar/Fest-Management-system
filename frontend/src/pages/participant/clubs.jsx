@@ -55,7 +55,7 @@ const Clubs = () => {
                                 <div className="flex justify-between items-start">
                                     <CardTitle className="text-lg">{club.name}</CardTitle>
                                     {followedIds.includes(club._id) && (
-                                        <Badge variant="default">Following</Badge>
+                                        <Badge>Following</Badge>
                                     )}
                                 </div>
                             </CardHeader>

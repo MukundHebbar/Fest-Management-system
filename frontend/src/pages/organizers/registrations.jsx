@@ -106,12 +106,14 @@ const RegistrationsList = ({ eventId }) => {
         }
     };
 
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
     const handleDownload = (fileId) => {
-        window.open(`http://localhost:5000/api/organizers/registrations/file/${fileId}`, '_blank');
+        window.open(`${API_URL}/organizers/registrations/file/${fileId}`, '_blank');
     };
 
     const handleCsvDownload = () => {
-        window.open(`http://localhost:5000/api/organizers/events/${eventId}/registrations/csv`, '_blank');
+        window.open(`${API_URL}/organizers/events/${eventId}/registrations/csv`, '_blank');
     };
 
     if (loading) return <div>Loading registrations...</div>;
@@ -141,7 +143,7 @@ const RegistrationsList = ({ eventId }) => {
                                         <TableCell className="font-medium">{team.teamName}</TableCell>
                                         <TableCell>{team.currentLength} / {team.capacity}</TableCell>
                                         <TableCell>
-                                            <Badge variant={team.complete ? 'default' : 'secondary'}>
+                                            <Badge>
                                                 {team.complete ? 'Complete' : 'Incomplete'}
                                             </Badge>
                                         </TableCell>
@@ -169,7 +171,7 @@ const RegistrationsList = ({ eventId }) => {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-muted-foreground">Status</span>
-                                        <Badge variant={selectedTeam.complete ? 'default' : 'secondary'}>
+                                        <Badge>
                                             {selectedTeam.complete ? 'Complete' : 'Incomplete'}
                                         </Badge>
                                     </div>
@@ -254,7 +256,7 @@ const RegistrationsList = ({ eventId }) => {
                                     <TableCell className="font-mono">{reg.ticketId}</TableCell>
                                     <TableCell>{new Date(reg.createdAt).toLocaleDateString()}</TableCell>
                                     <TableCell>
-                                        <Badge variant={reg.attended ? 'default' : 'secondary'}>
+                                        <Badge>
                                             {reg.attended ? 'Attended' : 'Absent'}
                                         </Badge>
                                     </TableCell>
@@ -290,7 +292,7 @@ const RegistrationsList = ({ eventId }) => {
                                 <div className="flex items-center justify-between border rounded-md p-3">
                                     <div>
                                         <span className="font-semibold text-sm">Attendance</span>
-                                        <Badge variant={details.attended ? 'default' : 'secondary'} className="ml-2">
+                                        <Badge className="ml-2">
                                             {details.attended ? 'Attended' : 'Absent'}
                                         </Badge>
                                     </div>
@@ -334,7 +336,7 @@ const RegistrationsList = ({ eventId }) => {
                                                                 <>
                                                                     <span className="truncate mr-2 font-mono text-xs text-muted-foreground">File ID: {value}</span>
                                                                     <Button
-                                                                        variant="outline"
+
                                                                         size="sm"
                                                                         className="h-7 text-xs"
                                                                         onClick={() => handleDownload(value)}

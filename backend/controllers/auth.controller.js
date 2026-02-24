@@ -1,9 +1,8 @@
 import UserModel from '../models/user.model.js'
 import ParticipantModel from '../models/participant.model.js';
 import bcrypt from 'bcryptjs';
-import generateTokenAndSetCookie from '../utils/generateToken.js'; 
+import generateTokenAndSetCookie from '../utils/generateToken.js';
 
-// to be specific this is only for participant signup. 
 export const signup = async (req, res) => {
     try {
         const { username, password, firstName, lastName, type, orgName,
@@ -15,14 +14,14 @@ export const signup = async (req, res) => {
             return res.status(400).json({ error: "Missing requried Fields" });
         }
         const user = await UserModel.findOne({ username: username });
-        if (user) {   // user already exists bro
+        if (user) {
             return res.status(400).json({ error: "Email/Username already exists" });
-        }   
+        }
 
-        if(type == "Y")
-        {   if((!(username.endsWith("iiit.ac.in"))) || orgName != "IIITH")
-            return res.status(400).json({error:"IIIT Student needs IIIT email"});
-        } 
+        if (type == "Y") {
+            if ((!(username.endsWith("iiit.ac.in"))) || orgName != "IIITH")
+                return res.status(400).json({ error: "IIIT Student needs IIIT email" });
+        }
 
         const salt = await bcrypt.genSalt();
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -30,9 +29,8 @@ export const signup = async (req, res) => {
         const newUser = new UserModel({
             username,
             passwordHash: hashedPassword,
-            role: "participant" // right now this is default
+            role: "participant"
         });
-        // assuming newUser has been created by now
         generateTokenAndSetCookie(newUser._id, res);
 
         await newUser.save();
@@ -56,11 +54,9 @@ export const signup = async (req, res) => {
 
     }
     catch (error) {
-        //cooked
         console.log("Signup in authcontroller is not working", error.message);
         res.status(500).json({ error: "Internal Server Error" });
     }
-    // the signup requires preferred
 }
 
 export const login = async (req, res) => {
@@ -93,10 +89,12 @@ export const login = async (req, res) => {
 
 export const logout = (req, res) => {
     try {
+        const isProduction = process.env.NODE_ENV === 'production';
         res.cookie("jwt", "", {
-            maxAge: 0, httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV !== "development",
+            maxAge: 0,
+            httpOnly: true,
+            sameSite: isProduction ? "none" : "strict",
+            secure: isProduction,
         });
         res.status(200).json({ message: "Log out completed successfully" });
 

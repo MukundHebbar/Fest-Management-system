@@ -35,14 +35,7 @@ const OrganizerDashboard = () => {
         fetchEvents();
     }, []);
 
-    const getStatusVariant = (status) => {
-        switch (status?.toLowerCase()) {
-            case 'published': return 'default';
-            case 'ongoing': return 'secondary';
-            case 'closed': return 'destructive';
-            default: return 'outline'; // Draft
-        }
-    };
+
 
     if (loading) return <div className="p-8 text-center text-muted-foreground">Loading events...</div>;
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
@@ -68,7 +61,7 @@ const OrganizerDashboard = () => {
                                 <CardTitle className="text-xl font-bold truncate pr-2 leading-tight" title={event.name}>
                                     {event.name}
                                 </CardTitle>
-                                <Badge variant={getStatusVariant(event.status)} className="whitespace-nowrap ml-2">
+                                <Badge className="whitespace-nowrap ml-2">
                                     {event.status}
                                 </Badge>
                             </CardHeader>
