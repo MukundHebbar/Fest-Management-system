@@ -50,37 +50,28 @@ const OrganizerDashboard = () => {
             </div>
 
             {events.length === 0 ? null : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="flex flex-wrap gap-4">
                     {events.map(event => (
                         <Card
                             key={event._id}
-                            className="h-full flex flex-col hover:shadow-md transition-shadow cursor-pointer"
+                            className="cursor-pointer"
                             onClick={() => navigate(`/organizer/event/${event._id}`)}
                         >
-                            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                                <CardTitle className="text-xl font-bold truncate pr-2 leading-tight" title={event.name}>
+                            <CardHeader className="flex flex-row justify-between pb-2">
+                                <CardTitle className="text-xl truncate">
                                     {event.name}
                                 </CardTitle>
-                                <Badge className="whitespace-nowrap ml-2">
+                                <Badge>
                                     {event.status}
                                 </Badge>
                             </CardHeader>
-                            <CardContent className="flex-grow space-y-2">
-                                <div className="text-sm">
-                                    <span className="font-semibold text-muted-foreground">Type: </span>
-                                    {event.eventType}
-                                </div>
-                                <CardDescription className="line-clamp-3">
-                                    {event.description}
-                                </CardDescription>
+                            <CardContent>
+                                <div className="text-sm">{event.eventType}</div>
+                                <CardDescription>{event.description}</CardDescription>
                             </CardContent>
-                            <CardFooter className="text-xs text-muted-foreground justify-between mt-auto pt-4 border-t">
-                                <div>
-                                    {event.startDate && new Date(event.startDate).toLocaleDateString()}
-                                </div>
-                                <div className="font-medium">
-                                    {event.registrationFee === 0 ? 'Free' : `₹${event.registrationFee}`}
-                                </div>
+                            <CardFooter className="text-xs justify-between">
+                                <div>{event.startDate && new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+                                <div>{event.registrationFee === 0 ? 'Free' : `₹${event.registrationFee}`}</div>
                             </CardFooter>
                         </Card>
                     ))}

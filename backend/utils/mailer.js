@@ -12,7 +12,7 @@ export const sendTicketEmail = async (toEmail, eventName, ticketId, organizerNam
     const qrDataUrl = await QRCode.toDataURL(ticketId);
     const qrBase64 = qrDataUrl.split(',')[1];
 
-    const fmtDate = (d) => d ? new Date(d).toLocaleDateString() : 'TBA';
+    const fmtDate = (d) => d ? new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'TBA';
 
     const html = `
         <h2>Registration Confirmed</h2>

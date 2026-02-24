@@ -87,7 +87,7 @@ const ClubInfo = () => {
                 </div>
             </CardContent>
             <CardFooter className="text-xs text-muted-foreground pt-0">
-                {event.startDate ? new Date(event.startDate).toLocaleDateString() : 'Date TBA'}
+                {event.startDate ? new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Date TBA'}
             </CardFooter>
         </Card>
     );

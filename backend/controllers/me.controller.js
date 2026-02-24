@@ -10,6 +10,7 @@ export const getMe = async (req, res) => {
         } 
         else {
         const user = await UserModel.findById(req.user._id).select("-passwordHash");
+        // might get cooked if i send the hash
         res.status(200).json(user); 
         }
     } 

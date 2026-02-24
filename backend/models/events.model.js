@@ -208,7 +208,7 @@ const teams_schema = new mongoose.Schema({
     required: true,
     type: Number,
     min: 2,
-    max: 5    // implicit constraint that team size <= 5 always
+    max: 5    // my constraint that team size <= 5 always
   },
   currentLength: {
     type: Number,

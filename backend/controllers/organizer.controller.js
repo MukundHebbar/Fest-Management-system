@@ -2,9 +2,11 @@ import { EventsModel, registrationsModel, teamsModel } from '../models/events.mo
 import organizerModel from '../models/organizer.model.js';
 import OrganizerModel from '../models/organizer.model.js'
 import UserModel from '../models/user.model.js';
+import { ObjectId } from 'mongodb'
 
 export const getEvents = async (req, res) => {
     try {
+        // middleware now takes care of this
         if (!req.user) {
             return res.status(401).json({ error: "Havent authenticated" });
         }
@@ -34,13 +36,14 @@ export const updateEvents = async (req, res) => {
         if (!event) {
             return res.status(400).json({ error: "Event not found" });
         }
+        //frontend has to send everything  not just updated ones
         const allFields = [
             'name', 'description', 'eventType', 'eligibility', 'tags',
             'registrationFee', 'registrationLimit', 'registrationDeadline',
             'startDate', 'endDate', 'registrationForm', 'merchandise', 'TeamEvents'
         ];
         const publishFields = ['description', 'registrationDeadline',
-            'registrationLimit',]
+            'registrationLimit',] // only things you cang change once published
 
         const updates = {}
 
@@ -62,13 +65,13 @@ export const updateEvents = async (req, res) => {
             if (registrationLimit && registrationLimit > event.registrationLimit) {
                 event.registrationLimit = registrationLimit;
             }
-
+            // want to avoid mishandling of dates. 
 
             if (closeRegistration) {
                 event.registrationDeadline = new Date();
             } else if (registrationDeadline) {
                 const newDeadline = new Date(registrationDeadline);
-                // Postpone deadline
+                // only allowed to postpone the deadline
                 if (newDeadline > event.registrationDeadline) {
                     event.registrationDeadline = newDeadline;
                 }
@@ -100,15 +103,12 @@ export const publishEvent = async (req, res) => {
         const coreFields = [
             'name', 'description', 'eventType', 'eligibility',
             'registrationDeadline', 'startDate', 'endDate',
-            'registrationLimit', 'registrationFee', 'tags'
+            'registrationLimit', 'tags'
         ];
 
         const missing = coreFields.filter(field => !event[field]);
 
         if (event.eventType == 'normal') {
-
-            if (!event.registrationForm)
-                missing.push("registration Form");
         }
         else if (event.TeamEvent == true) {
 
@@ -144,6 +144,7 @@ export const createDraft = async (req, res) => {
 
         if (req.body.eventType == 'merchandise') delete req.body.registrationForm;
         if (req.body.eventType == 'normal') delete req.body.merchandise;
+        //fricking frontend is sending these as well. 
 
         const eventData = {
             ...req.body,
@@ -161,7 +162,7 @@ export const createDraft = async (req, res) => {
         res.status(201).json(newEvent);
 
     } catch (error) {
-        if (error.name === 'ReferenceError') {
+        if (error.name === 'ReferenceError') { // i dont think this is the right error code
             console.log("Validation error in createDraft:", error.message);
             return res.status(400).json({ error: error.message });
         }
@@ -177,7 +178,7 @@ export const fetchEventAnalysis = async (req, res) => {
         const user = await UserModel.findById(req.user._id)
 
         const event = await EventsModel.findById(event_id).lean();
-        if (event.organizer.toString() != req.orgId.toString()) {
+        if (event.organizer.toString() != req.orgId.toString()) { // so much pain
             return res.status(400).json({ error: "Event not found" })
         }
 
@@ -187,10 +188,18 @@ export const fetchEventAnalysis = async (req, res) => {
 
         if (event.status != "Draft") {
             const registrations = await registrationsModel.countDocuments({ EventId: event._id });
+            const attended = await registrationsModel.countDocuments({ EventId: event._id, attended: true });
             const fee = event.registrationFee;
-            const revenue = fee * registrations;
-            event.revenue = revenue;
+            event.revenue = fee * registrations;
             event.registrations = registrations;
+            event.attended = attended;
+
+            if (event.TeamEvent) {
+                const teamIds = await registrationsModel.distinct('teamId', { EventId: event._id, teamId: { $exists: true } });
+                const teams = await teamsModel.find({ _id: { $in: teamIds } }).lean();
+                event.totalTeams = teams.length;
+                event.completedTeams = teams.filter(t => t.currentLength >= t.capacity).length;
+            }
         }
         return res.status(201).json(event);
     }
@@ -212,6 +221,7 @@ export const requestPasswordReset = async (req, res) => {
 
 
         const hasPending = organizer.resetHistory.some(r => r.status === 'Pending');
+        //  tell me if something is there- so some
         if (hasPending) {
             return res.status(400).json({ error: "You already have a pending request" });
         }
@@ -235,6 +245,7 @@ export const getResetHistory = async (req, res) => {
 
 
         const history = [...organizer.resetHistory].sort((a, b) => b.requestedAt - a.requestedAt);
+        //sort based on descending date order for me. 
         return res.status(200).json(history);
     } catch (error) {
         console.log("Error in getResetHistory controller", error);
@@ -322,6 +333,7 @@ export const getRegistrationDetails = async (req, res) => {
         if (!req.orgId) return res.status(401).json({ error: "Unauthorized" });
 
         const registration = await registrationsModel.findById(regId).populate('EventId');
+        // foreign key for event
 
         if (!registration) return res.status(404).json({ error: "Registration not found" });
 
@@ -340,14 +352,14 @@ export const getRegistrationDetails = async (req, res) => {
 export const getRegistrationFile = async (req, res) => {
     try {
         const fileId = req.params.id;
-        const { gridfsBucket } = await import('../config/db.js');
-        const { ObjectId } = await import('mongodb');
+        const { gridfsBucket } = await import('../config/db.js'); // torture and pain
+
 
         if (!gridfsBucket) {
             return res.status(500).json({ error: "File service unavailable" });
         }
 
-        const _id = new ObjectId(fileId);
+        const _id = new ObjectId(fileId); // doesnt accept string,so all this cirkus
         const downloadStream = gridfsBucket.openDownloadStream(_id);
 
         downloadStream.on('error', (error) => {
@@ -380,7 +392,7 @@ export const exportRegistrationsCsv = async (req, res) => {
                 populate: { path: 'user', select: 'username' }
             })
             .select('_id participantId ticketId createdAt attended')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 }); // latest first
 
 
         const header = 'Registration ID,First Name,Last Name,Username,Ticket ID,Registration Date,Attended\n';
@@ -388,7 +400,7 @@ export const exportRegistrationsCsv = async (req, res) => {
             const firstName = reg.participantId?.firstName || '';
             const lastName = reg.participantId?.lastName || '';
             const username = reg.participantId?.user?.username || '';
-            const ticketId = reg.ticketId || '';
+            const ticketId = reg.ticketId || ''; // incomplete teams might need
             const date = reg.createdAt ? new Date(reg.createdAt).toISOString() : '';
             const attended = reg.attended ? 'Yes' : 'No';
             return `${reg._id},${firstName},${lastName},${username},${ticketId},${date},${attended}`;
@@ -446,7 +458,7 @@ export const manageAttendance = async (req, res) => {
             return res.status(400).json({ error: "Already attended" });
         }
 
-        registration.attended = action;
+        registration.attended = action; //lets me manually override shi
         await registration.save();
 
 
@@ -476,7 +488,7 @@ export const getEventTeams = async (req, res) => {
         const teams = await Promise.all(teamIds.map(async (teamId) => {
             const team = await teamsModel.findById(teamId).lean();
             if (!team) return null;
-
+            // do parallely, already mungo is slow
             const members = await registrationsModel.find({ teamId })
                 .populate('participantId', 'firstName lastName')
                 .select('participantId');
@@ -490,7 +502,7 @@ export const getEventTeams = async (req, res) => {
                 complete: team.currentLength >= team.capacity,
                 members: members.map(m => ({
                     name: m.participantId ? `${m.participantId.firstName} ${m.participantId.lastName}` : 'Unknown',
-                }))
+                })) // team might not be full tho
             };
         }));
 

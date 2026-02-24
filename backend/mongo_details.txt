@@ -1,5 +1,3 @@
-mukund_dass_a1 - Username
-password - mukund_password123
 
 
-connection string - mongodb+srv://mukund_dass_a1:mukund_password123@dass-a1.2rrdg4k.mongodb.net/?appName=DASS-A1
+

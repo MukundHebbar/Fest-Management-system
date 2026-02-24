@@ -264,7 +264,7 @@ const RegistrationsList = ({ eventId }) => {
                                         <div className="text-xs text-muted-foreground">{reg.participantId?.email}</div>
                                     </TableCell>
                                     <TableCell className="font-mono">{reg.ticketId}</TableCell>
-                                    <TableCell>{new Date(reg.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>{new Date(reg.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</TableCell>
                                     <TableCell>
                                         <Badge>
                                             {reg.attended ? 'Attended' : 'Absent'}
@@ -294,7 +294,7 @@ const RegistrationsList = ({ eventId }) => {
                                     </div>
                                     <div>
                                         <span className="font-semibold block">Date</span>
-                                        <span>{new Date(details.createdAt).toLocaleString()}</span>
+                                        <span>{new Date(details.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
                                     </div>
                                 </div>
 

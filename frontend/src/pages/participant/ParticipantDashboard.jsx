@@ -96,7 +96,7 @@ const ParticipantDashboard = () => {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Date:</span>
-                                <span>{event.startDate ? new Date(event.startDate).toLocaleDateString() : 'N/A'}</span>
+                                <span>{event.startDate ? new Date(event.startDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'N/A'}</span>
                             </div>
 
                             {registration.merchandise?.items && (
@@ -128,7 +128,7 @@ const ParticipantDashboard = () => {
                         <div>
                             <CardTitle className="text-lg">{event.name}</CardTitle>
                             <CardDescription className="text-xs">
-                                Registered on {new Date(registration.createdAt).toLocaleDateString()}
+                                Registered on {new Date(registration.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                             </CardDescription>
                         </div>
                     </div>

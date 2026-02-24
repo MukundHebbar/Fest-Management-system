@@ -125,7 +125,7 @@ const OrganizerPasswordReset = () => {
                                     {history.map((entry, i) => (
                                         <TableRow key={i}>
                                             <TableCell className="text-sm">
-                                                {new Date(entry.requestedAt).toLocaleDateString()}
+                                                {new Date(entry.requestedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                                             </TableCell>
                                             <TableCell className="text-sm">{entry.reason}</TableCell>
                                             <TableCell>{statusBadge(entry.status)}</TableCell>

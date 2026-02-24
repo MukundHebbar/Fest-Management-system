@@ -6,7 +6,7 @@ import { autoGenerateCredentials, autoGenPassword } from "../utils/credentials.j
 export const addOrganization = async (req, res) => {
     try {
         const orgCount = await OrganizerModel.countDocuments();
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000); //hopefully we dont collide
         const { email, password, passwordHash } = await autoGenerateCredentials(orgCount + randomSuffix);
 
         const newUser = new UserModel({
@@ -50,7 +50,7 @@ export const removeOrganization = async (req, res) => {
 
 
         const events = await EventsModel.find({ organizer: orgId }).select('_id');
-        const eventIds = events.map(e => e._id);
+        const eventIds = events.map(e => e._id); // i want an array with event ids for this guy
 
 
         const teamIds = await registrationsModel.distinct('teamId', {
@@ -86,7 +86,7 @@ export const removeOrganization = async (req, res) => {
 
 export const getAllOrganizers = async (req, res) => {
     try {
-        const organizers = await OrganizerModel.find().lean();
+        const organizers = await OrganizerModel.find().lean(); // might have to attach something to this
         return res.status(200).json(organizers);
     } catch (error) {
         console.log("Error in admin getAllOrganizers controller", error);

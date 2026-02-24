@@ -81,7 +81,7 @@ export const putMyOrganizations = async (req, res) => {
         const { followingOrganizations } = req.body;
 
         if (!followingOrganizations || !Array.isArray(followingOrganizations)) {
-            return res.status(400).json({ error: "followingOrganizations must be an array of organization names" });
+            return res.status(400).json({ error: "following organizations must be an array of organization names" });
         }
 
 
@@ -110,7 +110,7 @@ const uploadFilesToGridFS = async (files) => {
     const { Readable } = await import('stream');
 
     if (!gridfsBucket) {
-        throw new Error("File upload service unavailable");
+        throw new Error("File upload service unavailable"); // code is only wrong if it happens
     }
 
 

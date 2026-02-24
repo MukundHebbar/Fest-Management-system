@@ -172,7 +172,7 @@ const EventCard = () => {
     const [error, setError] = useState(null);
     const [successMsg, setSuccessMsg] = useState(null);
 
-    // Check if we are in "Create" mode
+    // Check if this guy is in Create mode
     const isCreateMode = !id;
 
     const { register, control, handleSubmit, reset, setValue, watch, formState: { isSubmitting } } = useForm({
@@ -181,11 +181,14 @@ const EventCard = () => {
             description: '',
             eventType: 'normal',
             startDate: '',
+            startTime: '',
             endDate: '',
+            endTime: '',
             registrationFee: 0,
             registrationLimit: '',
             registrationDeadline: '',
-            eligibility: false, // Default to false (N)
+            deadlineTime: '',
+            eligibility: false, // Default to false N
             TeamEvent: false,
             closeRegistration: false,
             registrationForm: [], // For normal events
@@ -201,8 +204,8 @@ const EventCard = () => {
     });
 
 
-    // Watch status to handle conditional disabling and validation
-    // In create mode, we treat it as a "Draft" effectively (everything editable)
+
+    // In create mode, we treat it as a "Draft" effectively 
     const status = isCreateMode ? 'Draft' : event?.status;
     const isDraft = status === 'Draft';
     const isPublished = status === 'Published';
@@ -223,8 +226,11 @@ const EventCard = () => {
                     reset({
                         ...foundEvent,
                         startDate: foundEvent.startDate ? new Date(foundEvent.startDate).toISOString().split('T')[0] : '',
+                        startTime: foundEvent.startDate ? new Date(foundEvent.startDate).toISOString().slice(11, 16) : '',
                         endDate: foundEvent.endDate ? new Date(foundEvent.endDate).toISOString().split('T')[0] : '',
+                        endTime: foundEvent.endDate ? new Date(foundEvent.endDate).toISOString().slice(11, 16) : '',
                         registrationDeadline: foundEvent.registrationDeadline ? new Date(foundEvent.registrationDeadline).toISOString().split('T')[0] : '',
+                        deadlineTime: foundEvent.registrationDeadline ? new Date(foundEvent.registrationDeadline).toISOString().slice(11, 16) : '',
                         eligibility: foundEvent.eligibility === 'Y', // Convert 'Y'/'N' to boolean
                         TeamEvent: foundEvent.TeamEvent || false,
                         merchandise: foundEvent.merchandise || { items: { name: '', variants: [] }, purchaseLimitPerParticipant: 1 },
@@ -257,12 +263,17 @@ const EventCard = () => {
                 ...data,
                 eligibility: data.eligibility ? 'Y' : 'N',
                 tags: data.tags.split(',').map(t => t.trim()).filter(Boolean),
-                // Process registration form options: string -> array
+                startDate: data.startDate ? `${data.startDate}T${data.startTime || '00:00'}` : '',
+                endDate: data.endDate ? `${data.endDate}T${data.endTime || '00:00'}` : '',
+                registrationDeadline: data.registrationDeadline ? `${data.registrationDeadline}T${data.deadlineTime || '23:59'}` : '',
                 registrationForm: data.registrationForm?.map(f => ({
                     ...f,
                     options: typeof f.options === 'string' ? f.options.split(',').map(o => o.trim()).filter(Boolean) : f.options
                 })) || []
             };
+            delete payload.startTime;
+            delete payload.endTime;
+            delete payload.deadlineTime;
 
             if (isCreateMode) {
                 // Create new event: POST /organizers/events
@@ -327,6 +338,30 @@ const EventCard = () => {
 
             {successMsg && <div className="p-4 bg-green-100 text-green-700 rounded-md">{successMsg}</div>}
             {error && <div className="p-4 bg-red-100 text-red-700 rounded-md">{error}</div>}
+
+            {!isCreateMode && event?.status !== 'Draft' && (
+                <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="border rounded-md p-3">
+                        <span className="font-semibold">Revenue: </span>₹{event?.revenue || 0}
+                    </div>
+                    <div className="border rounded-md p-3">
+                        <span className="font-semibold">Registered: </span>{event?.registrations || 0}
+                    </div>
+                    <div className="border rounded-md p-3">
+                        <span className="font-semibold">Attended: </span>{event?.attended || 0}
+                    </div>
+                    {event?.TeamEvent && (
+                        <>
+                            <div className="border rounded-md p-3">
+                                <span className="font-semibold">Total Teams: </span>{event?.totalTeams || 0}
+                            </div>
+                            <div className="border rounded-md p-3">
+                                <span className="font-semibold">Complete Teams: </span>{event?.completedTeams || 0}
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
 
             <Card>
                 <form onSubmit={handleSubmit(onSubmit)}>
@@ -420,24 +455,22 @@ const EventCard = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="flex flex-wrap gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="startDate">Start Date</Label>
-                                <Input
-                                    type="date"
-                                    id="startDate"
-                                    disabled={!isDraft}
-                                    {...register("startDate")}
-                                />
+                                <Label>Start Date</Label>
+                                <Input type="date" disabled={!isDraft} {...register("startDate")} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="endDate">End Date</Label>
-                                <Input
-                                    type="date"
-                                    id="endDate"
-                                    disabled={!isDraft}
-                                    {...register("endDate")}
-                                />
+                                <Label>Start Time</Label>
+                                <input type="time" className="w-full border rounded-md px-3 py-2 text-sm" disabled={!isDraft} {...register("startTime")} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>End Date</Label>
+                                <Input type="date" disabled={!isDraft} {...register("endDate")} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>End Time</Label>
+                                <input type="time" className="w-full border rounded-md px-3 py-2 text-sm" disabled={!isDraft} {...register("endTime")} />
                             </div>
                         </div>
 
@@ -461,13 +494,12 @@ const EventCard = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="registrationDeadline">Registration Deadline</Label>
-                                <Input
-                                    type="date"
-                                    id="registrationDeadline"
-                                    {...register("registrationDeadline")}
-                                    min={isPublished ? new Date().toISOString().split('T')[0] : undefined}
-                                />
+                                <Label>Registration Deadline</Label>
+                                <Input type="date" {...register("registrationDeadline")} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Deadline Time</Label>
+                                <input type="time" className="w-full border rounded-md px-3 py-2 text-sm" {...register("deadlineTime")} />
                             </div>
                         </div>
 

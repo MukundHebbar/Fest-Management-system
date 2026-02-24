@@ -40,6 +40,6 @@ router.patch("/events/:eventId/attend-ticket/:ticketId", manageAttendance);
 router.patch("/events/:id/status", (req, res) => {
     console.log("doesnt work");
     res.status(400).json({ error: "Not implemented gendu" })
-});  // change status from published/ongoing to something else
+});  // i dont need this .
 
 export default router;
