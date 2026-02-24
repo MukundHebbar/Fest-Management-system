@@ -106,14 +106,24 @@ const RegistrationsList = ({ eventId }) => {
         }
     };
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-    const handleDownload = (fileId) => {
-        window.open(`${API_URL}/organizers/registrations/file/${fileId}`, '_blank');
+    const handleDownload = async (fileId) => {
+        const res = await axiosInstance.get(`/organizers/registrations/file/${fileId}`, { responseType: 'blob' });
+        const url = window.URL.createObjectURL(res.data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `file_${fileId}`;
+        a.click();
+        window.URL.revokeObjectURL(url);
     };
 
-    const handleCsvDownload = () => {
-        window.open(`${API_URL}/organizers/events/${eventId}/registrations/csv`, '_blank');
+    const handleCsvDownload = async () => {
+        const res = await axiosInstance.get(`/organizers/events/${eventId}/registrations/csv`, { responseType: 'blob' });
+        const url = window.URL.createObjectURL(res.data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `registrations_${eventId}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
     };
 
     if (loading) return <div>Loading registrations...</div>;
